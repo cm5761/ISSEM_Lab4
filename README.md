@@ -1,5 +1,7 @@
 # ISSEM_Lab4
 
+Note: These are NEW vulnerabilities building on top of the patches already performed in previous labs
+
 Vulnerabilities List:
 
 
