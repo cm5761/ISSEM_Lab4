@@ -11,17 +11,18 @@ Vulnerabilities List:
 
 | Vulnerability  | Point Person  |  Status       | 
 | -------------  | ------------- | ------------- | 
-| SampleNetworkClient.py  | ------------- | ------------- | 
+| SampleNetworkClient.py  
 | -------------  | ------------- | ------------- | 
 | DDoS Counter/rate limiter (SampleNetworkClient.py)   | Content Cell  | Open  |
-| DDoS counter/rate limiter (SampleNetworkServer.py)  | Content Cell  | Open  |
+| No Protection from System Clock Manipulation   | Content Cell  | Open  |
 | TLS to secure NW communication   | Content Cell  | Open  |
 | Vulnerability in the OS library   | Content Cell  | Open  | directory traversal that could allow attackers to potentially gain system access. https://www.bleepingcomputer.com/news/security/unpatched-15-year-old-python-bug-allows-code-execution-in-350k-projects/
 | -------------  | ------------- | ------------- | 
-| SampleNetworkServer.py  | ------------- | ------------- | 
+| SampleNetworkServer.py 
 | -------------  | ------------- | ------------- | 
-| No Protection from System Clock Manipulation   | Content Cell  | Open  |
-| Content Cell   | Content Cell  | Open  |
+| TLS to secure NW communication   | Content Cell  | Open  |
+| Vulnerability in the OS library   | Content Cell  | Open  | directory traversal that could allow attackers to potentially gain system access. https://www.bleepingcomputer.com/news/security/unpatched-15-year-old-python-bug-allows-code-execution-in-350k-projects/
+| DDoS counter/rate limiter (SampleNetworkServer.py)  | Content Cell  | Open  |
 | Content Cell   | Content Cell  | Open  |
 | Content Cell   | Content Cell  | Open  |
 | Content Cell   | Content Cell  | Open  |
