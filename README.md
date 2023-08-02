@@ -1,8 +1,8 @@
-# ISSEM_Lab4
+# Group 15 - ISSEM
 
 Note: These are NEW vulnerabilities building on top of the patches already performed in previous labs
 
-Vulnerabilities List:
+### Vulnerabilities List
 
 
 | **Vulnerability**  | **Point Person**  |  **Status**       | **Note (details)**       | 
