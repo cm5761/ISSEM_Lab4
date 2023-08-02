@@ -3,9 +3,9 @@
 Vulnerabilities List:
 
 
-| Vulnerability  | Point Person  |  Status       | Note (details)       | 
+| **Vulnerability**  | **Point Person**  |  **Status**       | **Note (details)**       | 
 | -------------  | ------------- | ------------- | ------------- |
-| SampleNetworkClient.py  
+| <ins>**SampleNetworkClient.py**</ins> 
 | -------------  | ------------- | ------------- | ------------- |
 | DDoS Counter/rate limiter (SampleNetworkClient.py)   | Content Cell  | Open  | ------------- |
 | No Protection from System Clock Manipulation   | Content Cell  | Open  | ------------- |
@@ -15,7 +15,7 @@ Vulnerabilities List:
 | Init Declarations and Initializations   | Content Cell  | Open  |  3 |
 | Error Handling   | Content Cell  | Open  |  6 |
 | -------------  | ------------- | ------------- | ------------- | 
-| SampleNetworkServer.py 
+| <ins>**SampleNetworkServer.py**</ins> 
 | -------------  | ------------- | ------------- | ------------- | 
 | socket.recfrom blocks until data is received  | Content Cell  | Open  | 2 |
 | TLS to secure NW communication   | Content Cell  | Open  | ------------- |
