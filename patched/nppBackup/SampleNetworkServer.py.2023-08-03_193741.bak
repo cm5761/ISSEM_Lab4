@@ -17,7 +17,6 @@ from simpleclient import SimpleClient # importing simpleclient instead of duplic
 import infinc
 import hvac # hashicorp
 
-from collections import defaultdict # for our rate limiter
 
 from setup import * # for testing purposes ONLY
 
@@ -129,13 +128,13 @@ def processCommands(self, msg, addr):
                     self.last_check_time = current_time
 
                 if self.total_rate_limiter >= MAX_REQUESTS_TOTAL:
-                    # Total rate limit exceeded, we deliberately do not notify potential attacker - we should log it and flag internally
+                    # Total rate limit exceeded
                     continue
 
                 msg, addr = self.serverSocket.recvfrom(1024)
                 ip = addr[0]
                 if self.ip_rate_limiter[ip] >= MAX_REQUESTS_PER_IP:
-                    # IP rate limit exceeded, we deliberately do not notify potential attacker - we should log it and flag internally
+                    # IP rate limit exceeded, we deliberately DO NOT NOTIFY potential attacker of this, but should internally log
                     continue
 
                 # Increment rate limiters

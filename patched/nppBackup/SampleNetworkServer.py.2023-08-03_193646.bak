@@ -17,7 +17,6 @@ from simpleclient import SimpleClient # importing simpleclient instead of duplic
 import infinc
 import hvac # hashicorp
 
-from collections import defaultdict # for our rate limiter
 
 from setup import * # for testing purposes ONLY
 
@@ -117,31 +116,16 @@ def processCommands(self, msg, addr):
 
     def run(self):
         MAX_TOKENS = 20  # Maximum number of tokens allowed
-        MAX_REQUESTS_PER_IP = 100  # Maximum number of requests per second per IP
-        MAX_REQUESTS_TOTAL = 500  # Maximum number of requests per second total
         while not self.stopped.is_set(): # help with infinite loop risk and race conditions
             try:
-                current_time = datetime.now()
-                if current_time - self.last_check_time >= timedelta(seconds=1):
-                    # Reset rate limiters every second
-                    self.ip_rate_limiter.clear()
-                    self.total_rate_limiter = 0
-                    self.last_check_time = current_time
-
-                if self.total_rate_limiter >= MAX_REQUESTS_TOTAL:
-                    # Total rate limit exceeded, we deliberately do not notify potential attacker - we should log it and flag internally
-                    continue
+                # Remove expired tokens
+                with self.token_lock:
+                    current_time = datetime.now()
+                    expired_tokens = [token for token, expiration_time in self.tokens.items() if expiration_time <= current_time]
+                    for token in expired_tokens:
+                        del self.tokens[token]
 
                 msg, addr = self.serverSocket.recvfrom(1024)
-                ip = addr[0]
-                if self.ip_rate_limiter[ip] >= MAX_REQUESTS_PER_IP:
-                    # IP rate limit exceeded, we deliberately do not notify potential attacker - we should log it and flag internally
-                    continue
-
-                # Increment rate limiters
-                self.ip_rate_limiter[ip] += 1
-                self.total_rate_limiter += 1
-
                 msg = msg.decode("utf-8").strip()
                 msg = decrypt_value(encryption_key,msg) #decrypting the received message
                 cmds = msg.split(' ')

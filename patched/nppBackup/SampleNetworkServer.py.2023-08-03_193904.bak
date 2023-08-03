@@ -18,7 +18,6 @@ import infinc
 import hvac # hashicorp
 
 from collections import defaultdict # for our rate limiter
-
 from setup import * # for testing purposes ONLY
 
 class SmartNetworkThermometer(threading.Thread):

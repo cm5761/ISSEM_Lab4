@@ -17,7 +17,6 @@ from simpleclient import SimpleClient # importing simpleclient instead of duplic
 import infinc
 import hvac # hashicorp
 
-from collections import defaultdict # for our rate limiter
 
 from setup import * # for testing purposes ONLY
 
