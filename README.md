@@ -30,8 +30,13 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | Token Storage  | Content Cell  | Open  |  7 |
 | Token Usage  | Content Cell  | Open  |  8 |
 | Timing Attack  | Content Cell  | Open  |  9 |
-| Poor Randomness  | Alon Hillel-Tuch  | Open  |  10 |
+| Poor Randomness  | Alon Hillel-Tuch  | Patched  |  10 |
 | Content Cell | Content Cell  | Open  |  ------------- |
+
+
+Status types:
+[Open, Patched, Closed]
+Closed implies the patch has been tested. 
 
 Notes:
 1. Directory traversal that could allow attackers to potentially gain system access. https://www.bleepingcomputer.com/news/security/unpatched-15-year-old-python-bug-allows-code-execution-in-350k-projects/
