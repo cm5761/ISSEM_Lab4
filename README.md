@@ -30,8 +30,13 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | Token Storage  | Content Cell  | Open  |  7 |
 | Token Usage  | Content Cell  | Open  |  8 |
 | Timing Attack  | Content Cell  | Open  |  9 |
-| Poor Randomness  | Alon Hillel-Tuch  | Open  |  10 |
+| Poor Randomness  | Alon Hillel-Tuch  | Patched  |  10 |
 | Content Cell | Content Cell  | Open  |  ------------- |
+
+
+Status types:
+[Open, Patched, Closed]
+Closed implies the patch has been tested. 
 
 Notes:
 1. Directory traversal that could allow attackers to potentially gain system access. https://www.bleepingcomputer.com/news/security/unpatched-15-year-old-python-bug-allows-code-execution-in-350k-projects/
@@ -56,3 +61,10 @@ Environment Concerns:
 2. We know that the code runs on the Linux operating system but we do not know what version of Linux and what dependencies have been installed. 
 3. We do not know what the network layout is. [we're just manufacturing the device, so we do not know what type of network it will be put in, so expect the worst]
 4. We do not know what the greater authentication system is
+
+
+
+
+Patch Notes:
+
+- Random.choice(): this function has been removed. Instead, the code uses the secrets.choice() method to generate a random token, secrets.choice() generates cryptographically secure random values, which is more secure than the deterministic algorithm used by random.choice(). 
