@@ -9,7 +9,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | -------------  | ------------- | ------------- | ------------- |
 | <ins>**SampleNetworkClient.py**</ins> 
 | -------------  | ------------- | ------------- | ------------- |
-| DDoS Counter/rate limiter (SampleNetworkClient.py)   | Content Cell  | Open  | ------------- |
+| DDoS Counter/rate limiter (SampleNetworkClient.py)   |  Alon Hillel-Tuch   | Open  | ------------- |
 | No Protection from System Clock Manipulation   | Content Cell  | Open  | ------------- |
 | TLS to secure NW communication   | Content Cell  | Open  | ------------- |
 | Vulnerability in the OS library   | Content Cell  | Open  |  1 |
@@ -23,14 +23,14 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | TLS to secure NW communication   | Content Cell  | Open  | ------------- |
 | TLS to secure NW communication   | Content Cell  | Open  | ------------- |
 | Vulnerability in the OS library   | Content Cell  | Open  |  1 |
-| DDoS counter/rate limiter (SampleNetworkServer.py)  | Content Cell  | Open  | ------------- |
-| Input Validation  | Content Cell  | Open  |  4 |
-| Access Controls  | Content Cell  | Open  | 5 |
+| DDoS counter/rate limiter (SampleNetworkServer.py)  |  Alon Hillel-Tuch   | Open  | ------------- |
+| Input Validation  | Copeland Myrie  | Open  |  4 |
+| Access Controls  | Copeland Myrie | Open  | 5 |
 | Error Handling   | Content Cell  | Open  |  6 |
 | Token Storage  | Content Cell  | Open  |  7 |
 | Token Usage  | Content Cell  | Open  |  8 |
 | Timing Attack  | Content Cell  | Open  |  9 |
-| Poor Randomness  | Content Cell  | Open  |  10 |
+| Poor Randomness  | Alon Hillel-Tuch  | Open  |  10 |
 | Content Cell | Content Cell  | Open  |  ------------- |
 
 Notes:
