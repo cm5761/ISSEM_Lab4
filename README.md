@@ -61,3 +61,10 @@ Environment Concerns:
 2. We know that the code runs on the Linux operating system but we do not know what version of Linux and what dependencies have been installed. 
 3. We do not know what the network layout is. [we're just manufacturing the device, so we do not know what type of network it will be put in, so expect the worst]
 4. We do not know what the greater authentication system is
+
+
+
+
+Patch Notes:
+
+- Random.choice(): this function has been removed. Instead, the code uses the secrets.choice() method to generate a random token, secrets.choice() generates cryptographically secure random values, which is more secure than the deterministic algorithm used by random.choice(). 
