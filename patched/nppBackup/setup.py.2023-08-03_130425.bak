@@ -1,0 +1,19 @@
+# This not secure, and is purely for testing purposes
+
+# Make sure you install vault for your environment
+
+
+import subprocess
+import threading
+
+def run_command():
+    command = "vault server -dev -dev-root-token-id=dev-only-token"
+    subprocess.run(command, shell=True)
+
+# Create a separate thread for running the command
+thread = threading.Thread(target=run_command)
+
+# Start the thread
+thread.start()
+
+# code keeps running
