@@ -7,7 +7,6 @@ import hvac
 import os
 # Run in terminal or separate thread
 
-from setup import * # For testing purposes ONLY
 
 class SimpleNetworkClient :
     def __init__(self, port1, port2) :
