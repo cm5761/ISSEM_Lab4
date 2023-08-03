@@ -8,15 +8,14 @@ import socket
 import fcntl
 import os
 import errno
-import random
-import string
 
+import secrets
+import string
 from datetime import datetime, timedelta
 
 from simpleclient import SimpleClient # importing simpleclient instead of duplicating code
 import infinc
 import hvac # hashicorp
-
 
 class SmartNetworkThermometer(threading.Thread):
     open_cmds = ["AUTH", "LOGOUT"]
@@ -87,7 +86,7 @@ def processCommands(self, msg, addr):
                 password = self.authenticate()
                 if cs[1] == password:
                     with self.token_lock:
-                        token = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+                        token = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
                         expiration_time = datetime.now() + timedelta(minutes=self.expiration_minutes)
                         # Set token expiration time
                         self.tokens[token] = expiration_time

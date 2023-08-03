@@ -10,13 +10,13 @@ def run_command():
     command = "vault server -dev -dev-root-token-id=dev-only-token"
     subprocess.run(command, shell=True)
 
-def start():
-    # Create a separate thread for running the command
-    thread = threading.Thread(target=run_command)
+# Create a separate thread for running the command
+thread = threading.Thread(target=run_command)
 
-    # Start the thread
-    thread.start()
+# Start the thread
+thread.start()
 
+# code keeps running
 
 # We are not just storing as an environmental variable but also encrypted with AES
 
@@ -50,8 +50,7 @@ def generate_encryption_key():
 
 # Example usage (this is the variable storing the key)
 # For demonstration purposes, we can work on better key storage/retrieval
-# encryption_key = generate_encryption_key()
-encryption_key = b'kly9j-rEKmtCZEECwshd2n2MDVAgJ6KhOZA1tqVjrmE='
+encryption_key = generate_encryption_key()
 
 # Encrypt the values
 encrypted_token = encrypt_value(encryption_key, 'dev-only-token')

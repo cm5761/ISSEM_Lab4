@@ -17,6 +17,9 @@ from simpleclient import SimpleClient # importing simpleclient instead of duplic
 import infinc
 import hvac # hashicorp
 
+
+import setup # for testing purposes ONLY
+
 class SmartNetworkThermometer(threading.Thread):
     open_cmds = ["AUTH", "LOGOUT"]
     prot_cmds = ["SET_DEGF", "SET_DEGC", "SET_DEGK", "GET_TEMP", "UPDATE_TEMP"]
