@@ -18,7 +18,7 @@ import infinc
 import hvac # hashicorp
 
 
-from setup import * # for testing purposes ONLY
+import setup # for testing purposes ONLY
 
 class SmartNetworkThermometer(threading.Thread):
     open_cmds = ["AUTH", "LOGOUT"]
