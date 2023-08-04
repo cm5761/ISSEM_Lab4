@@ -93,11 +93,10 @@ class SmartNetworkThermometer (threading.Thread) :
 
 
     def run(self) : #the running function
+
         while True:
-            clientSocket, addr = self.serverSocket.accept()
-            conn = context.wrap_socket(clientSocket, server_side=True)
             try:
-                msg = conn.recv(1024)
+                msg, addr = self.serverSocket.recvfrom(1024)
                 msg = msg.decode("utf-8").strip()
                 cmds = msg.split(' ')
                 if len(cmds) == 1 : # protected commands case
@@ -107,18 +106,18 @@ class SmartNetworkThermometer (threading.Thread) :
                         if msg[:semi] in self.tokens : #if its a valid token
                             self.processCommands(msg[semi+1:], addr)
                         else :
-                            conn.send(b"Bad Token\n")
+                            self.serverSocket.sendto(b"Bad Token\n", addr)
                     else :
-                            conn.send(b"Bad Command\n")
+                            self.serverSocket.sendto(b"Bad Command\n", addr)
                 elif len(cmds) == 2 :
                     if cmds[0] in self.open_cmds : #if its AUTH or LOGOUT
                         self.processCommands(msg, addr) 
                     else :
-                        conn.send(b"Authenticate First\n")
+                        self.serverSocket.sendto(b"Authenticate First\n", addr)
                 else :
                     # otherwise bad command
-                    conn.send(b"Bad Command\n")
-
+                    self.serverSocket.sendto(b"Bad Command\n", addr)
+    
             except IOError as e :
                 if e.errno == errno.EWOULDBLOCK :
                     #do nothing
@@ -128,9 +127,10 @@ class SmartNetworkThermometer (threading.Thread) :
                     pass
                 msg = ""
 
+ 
+
             self.updateTemperature()
             time.sleep(self.updatePeriod)
-
 
 UPDATE_PERIOD = .05 #in seconds
 SIMULATION_STEP = .1 #in seconds

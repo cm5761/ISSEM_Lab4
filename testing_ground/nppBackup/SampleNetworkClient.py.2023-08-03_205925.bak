@@ -4,7 +4,6 @@ import time
 import math
 import socket
 
-
 class SimpleNetworkClient :
     def __init__(self, port1, port2) :
         self.fig, self.ax = plt.subplots()

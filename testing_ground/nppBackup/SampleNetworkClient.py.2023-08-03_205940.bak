@@ -4,6 +4,7 @@ import time
 import math
 import socket
 
+from simpleclient import *
 
 class SimpleNetworkClient :
     def __init__(self, port1, port2) :
