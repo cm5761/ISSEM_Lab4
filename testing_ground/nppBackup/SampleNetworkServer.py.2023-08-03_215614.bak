@@ -47,7 +47,7 @@ class SmartNetworkThermometer (threading.Thread) :
         server_socket.listen(5)
         self.ssl_server_socket = context.wrap_socket(server_socket, server_side=True)
         
-        fcntl.fcntl(server_socket, fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(server_sockett, fcntl.F_SETFL, os.O_NONBLOCK)
 
         self.deg = "K"
                
