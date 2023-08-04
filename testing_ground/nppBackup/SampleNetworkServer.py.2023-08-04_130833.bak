@@ -98,22 +98,22 @@ class SmartNetworkThermometer (threading.Thread) :
                     if semi != -1 : #if we found the semicolon
                         #print (msg)
                         if msg[:semi] in self.tokens : #if its a valid token
-                            self.processCommands(msg[semi+1:], clientSocket)
+                            self.processCommands(msg[semi+1:], addr)
                         else :
-                            clientSocket.send(b"Bad Token\n")
+                            self.serverSocket.sendto(b"Bad Token\n", addr)
                     else :
-                            clientSocket.send(b"Bad Command\n")
+                            self.serverSocket.sendto(b"Bad Command\n", addr)
                 elif len(cmds) == 2 :
                     if cmds[0] in self.open_cmds : #if its AUTH or LOGOUT
-                        self.processCommands(msg, clientSocket) 
+                        self.processCommands(msg, addr) 
                     else :
-                        clientSocket.send(b"Authenticate First\n")
+                        self.serverSocket.sendto(b"Authenticate First\n", addr)
                 else :
                     # otherwise bad command
-                    clientSocket.send(b"Bad Command\n")
+                    self.serverSocket.sendto(b"Bad Command\n", addr)
                     
                 clientSocket.close() 
-
+    
             except IOError as e :
                 if e.errno == errno.EWOULDBLOCK :
                     #do nothing
@@ -123,9 +123,10 @@ class SmartNetworkThermometer (threading.Thread) :
                     pass
                 msg = ""
 
+ 
+
             self.updateTemperature()
             time.sleep(self.updatePeriod)
-
 
 
 class SimpleClient :
