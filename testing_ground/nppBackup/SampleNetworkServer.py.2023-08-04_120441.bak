@@ -89,7 +89,7 @@ class SmartNetworkThermometer (threading.Thread) :
                 client_socket.setblocking(False)  # Set non-blocking mode on the accepted socket
                 client_ssl_socket = ssl.wrap_socket(client_socket, server_side=False)  # Wrap the socket in an SSL context
 
-                msg, addr = self.serverSocket.recv(1024)
+                msg, addr = self.serverSocket.recvfrom(1024)
                 msg = msg.decode("utf-8").strip()
                 cmds = msg.split(' ')
                 if len(cmds) == 1 : # protected commands case

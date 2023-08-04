@@ -16,18 +16,18 @@ class SmartNetworkThermometer (threading.Thread) :
     open_cmds = ["AUTH", "LOGOUT"]
     prot_cmds = ["SET_DEGF", "SET_DEGC", "SET_DEGK", "GET_TEMP", "UPDATE_TEMP"]
 
-    def __init__(self, source, updatePeriod, port):
-        threading.Thread.__init__(self, daemon=True)
+    def __init__ (self, source, updatePeriod, port) :
+        threading.Thread.__init__(self, daemon = True) 
+        #set daemon to be true, so it doesn't block program from exiting
         self.source = source
         self.updatePeriod = updatePeriod
         self.curTemperature = 0
         self.updateTemperature()
         self.tokens = []
 
-        self.serverSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)  # Use SOCK_STREAM for TCP
+        self.serverSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self.serverSocket.bind(("127.0.0.1", port))
-        self.serverSocket.listen(5)
-        self.ssl_server_socket = ssl.wrap_socket(self.serverSocket, keyfile="server.key", certfile="server.crt", server_side=True)
+        fcntl.fcntl(self.serverSocket, fcntl.F_SETFL, os.O_NONBLOCK)
 
         self.deg = "K"
 
@@ -82,14 +82,10 @@ class SmartNetworkThermometer (threading.Thread) :
                 self.serverSocket.sendto(b"Invalid Command\n", addr)
 
 
-    def run(self):
-        while True:
-            try:
-                client_socket, addr = self.ssl_server_socket.accept()  # Accept a client connection
-                client_socket.setblocking(False)  # Set non-blocking mode on the accepted socket
-                client_ssl_socket = ssl.wrap_socket(client_socket, server_side=False)  # Wrap the socket in an SSL context
-
-                msg, addr = self.serverSocket.recv(1024)
+    def run(self) : #the running function
+        while True : 
+            try :
+                msg, addr = self.serverSocket.recvfrom(1024)
                 msg = msg.decode("utf-8").strip()
                 cmds = msg.split(' ')
                 if len(cmds) == 1 : # protected commands case
