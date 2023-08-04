@@ -42,13 +42,8 @@ class SimpleNetworkClient:
             s.connect(("127.0.0.1", p))
             s.sendall(b"%s;GET_TEMP" % tok)
             msg = s.recv(1024)
-            m = msg.decode("utf-8").strip()  # Remove leading/trailing whitespace
-            try:
-                temperature = float(m)
-                return temperature
-            except ValueError:
-                print(f"Error converting temperature from: {m}")
-                return 0.0  #
+            m = msg.decode("utf-8")
+            return (float(m))
 
     def authenticate(self, p, pw):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
