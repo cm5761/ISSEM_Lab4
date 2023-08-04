@@ -89,7 +89,7 @@ class SmartNetworkThermometer (threading.Thread) :
                 client_socket.setblocking(False)  # Set non-blocking mode on the accepted socket
                 client_ssl_socket = ssl.wrap_socket(client_socket, server_side=False)  # Wrap the socket in an SSL context
 
-                msg, addr = client_ssl_socket.recv(1024)
+                msg, addr = self.serverSocket.recv(1024)
                 msg = msg.decode("utf-8").strip()
                 cmds = msg.split(' ')
                 if len(cmds) == 1 : # protected commands case
@@ -99,17 +99,17 @@ class SmartNetworkThermometer (threading.Thread) :
                         if msg[:semi] in self.tokens : #if its a valid token
                             self.processCommands(msg[semi+1:], addr)
                         else :
-                            client_ssl_socket.send(b"Bad Token\n", addr)
+                            self.serverSocket.sendto(b"Bad Token\n", addr)
                     else :
-                            client_ssl_socket.send(b"Bad Command\n", addr)
+                            self.serverSocket.sendto(b"Bad Command\n", addr)
                 elif len(cmds) == 2 :
                     if cmds[0] in self.open_cmds : #if its AUTH or LOGOUT
                         self.processCommands(msg, addr) 
                     else :
-                        client_ssl_socket.send(b"Authenticate First\n", addr)
+                        self.serverSocket.sendto(b"Authenticate First\n", addr)
                 else :
                     # otherwise bad command
-                    client_ssl_socket.send(b"Bad Command\n", addr)
+                    self.serverSocket.sendto(b"Bad Command\n", addr)
     
             except IOError as e :
                 if e.errno == errno.EWOULDBLOCK :
