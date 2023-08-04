@@ -12,7 +12,6 @@ import errno
 import string
 import secrets
 
-
 from simpleclient import *
 
 import socket
@@ -47,7 +46,7 @@ class SmartNetworkThermometer (threading.Thread) :
         server_socket.listen(5)
         ssl_server_socket = context.wrap_socket(server_socket, server_side=True)
         
-        fcntl.fcntl(self.ssl_server_socket, fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(self.serverSocket, fcntl.F_SETFL, os.O_NONBLOCK)
 
         self.deg = "K"
                
@@ -82,13 +81,13 @@ class SmartNetworkThermometer (threading.Thread) :
                 if cs[0] == "AUTH":
                     if cs[1] == "!Q#E%T&U8i6y4r2w" :
                         self.tokens.append(''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16)))
-                        self.ssl_server_socket.sendto(self.tokens[-1].encode("utf-8"), addr)
+                        self.serverSocket.sendto(self.tokens[-1].encode("utf-8"), addr)
                         #print (self.tokens[-1])
                 elif cs[0] == "LOGOUT":
                     if cs[1] in self.tokens :
                         self.tokens.remove(cs[1])
                 else : #unknown command
-                    self.ssl_server_socket.sendto(b"Invalid Command\n", addr)
+                    self.serverSocket.sendto(b"Invalid Command\n", addr)
             elif c == "SET_DEGF" :
                 self.deg = "F"
             elif c == "SET_DEGC" :
@@ -96,11 +95,11 @@ class SmartNetworkThermometer (threading.Thread) :
             elif c == "SET_DEGK" :
                 self.deg = "K"
             elif c == "GET_TEMP" :
-                self.ssl_server_socket.sendto(b"%f\n" % self.getTemperature(), addr)
+                self.serverSocket.sendto(b"%f\n" % self.getTemperature(), addr)
             elif c == "UPDATE_TEMP" :
                 self.updateTemperature()
             elif c :
-                self.ssl_server_socket.sendto(b"Invalid Command\n", addr)
+                self.serverSocket.sendto(b"Invalid Command\n", addr)
 
 
     def run(self) : #the running function

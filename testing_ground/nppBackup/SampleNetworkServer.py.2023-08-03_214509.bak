@@ -12,22 +12,13 @@ import errno
 import string
 import secrets
 
-
 from simpleclient import *
 
 import socket
 import ssl
 
 host = "127.0.0.1"
-
-# create a custom context
-context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-
-# set the supported ciphers
-context.set_ciphers("ECDHE-ECDSA-AES128-GCM-SHA256") #as example
-
-# load the server certificate and private key
-context.load_cert_chain("server.crt", "server.key")
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
 
 class SmartNetworkThermometer (threading.Thread) :
     open_cmds = ["AUTH", "LOGOUT"]
@@ -42,12 +33,10 @@ class SmartNetworkThermometer (threading.Thread) :
         self.updateTemperature()
         self.tokens = []
 
-        server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        server_socket.bind((host, port))
-        server_socket.listen(5)
-        ssl_server_socket = context.wrap_socket(server_socket, server_side=True)
-        
-        fcntl.fcntl(self.ssl_server_socket, fcntl.F_SETFL, os.O_NONBLOCK)
+        self.serverSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+        self.serverSocket.bind((host, port))
+        self.serverSocket.listen(5)
+        fcntl.fcntl(self.serverSocket, fcntl.F_SETFL, os.O_NONBLOCK)
 
         self.deg = "K"
                
@@ -82,13 +71,13 @@ class SmartNetworkThermometer (threading.Thread) :
                 if cs[0] == "AUTH":
                     if cs[1] == "!Q#E%T&U8i6y4r2w" :
                         self.tokens.append(''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16)))
-                        self.ssl_server_socket.sendto(self.tokens[-1].encode("utf-8"), addr)
+                        self.serverSocket.sendto(self.tokens[-1].encode("utf-8"), addr)
                         #print (self.tokens[-1])
                 elif cs[0] == "LOGOUT":
                     if cs[1] in self.tokens :
                         self.tokens.remove(cs[1])
                 else : #unknown command
-                    self.ssl_server_socket.sendto(b"Invalid Command\n", addr)
+                    self.serverSocket.sendto(b"Invalid Command\n", addr)
             elif c == "SET_DEGF" :
                 self.deg = "F"
             elif c == "SET_DEGC" :
@@ -96,17 +85,17 @@ class SmartNetworkThermometer (threading.Thread) :
             elif c == "SET_DEGK" :
                 self.deg = "K"
             elif c == "GET_TEMP" :
-                self.ssl_server_socket.sendto(b"%f\n" % self.getTemperature(), addr)
+                self.serverSocket.sendto(b"%f\n" % self.getTemperature(), addr)
             elif c == "UPDATE_TEMP" :
                 self.updateTemperature()
             elif c :
-                self.ssl_server_socket.sendto(b"Invalid Command\n", addr)
+                self.serverSocket.sendto(b"Invalid Command\n", addr)
 
 
     def run(self) : #the running function
         while True:
             try:
-                clientSocket, addr = self.ssl_server_socket.accept()
+                clientSocket, addr = self.serverSocket.accept()
                 conn = context.wrap_socket(clientSocket, server_side=True)
                 try:
                     msg = conn.recv(1024)

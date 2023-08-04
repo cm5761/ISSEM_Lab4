@@ -12,7 +12,6 @@ import errno
 import string
 import secrets
 
-
 from simpleclient import *
 
 import socket
@@ -47,7 +46,7 @@ class SmartNetworkThermometer (threading.Thread) :
         server_socket.listen(5)
         ssl_server_socket = context.wrap_socket(server_socket, server_side=True)
         
-        fcntl.fcntl(self.ssl_server_socket, fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(self.serverSocket, fcntl.F_SETFL, os.O_NONBLOCK)
 
         self.deg = "K"
                

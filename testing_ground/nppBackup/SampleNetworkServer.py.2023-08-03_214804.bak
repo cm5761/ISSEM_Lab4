@@ -12,7 +12,6 @@ import errno
 import string
 import secrets
 
-
 from simpleclient import *
 
 import socket
