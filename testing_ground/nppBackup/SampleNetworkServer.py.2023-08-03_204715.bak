@@ -36,9 +36,7 @@ class SmartNetworkThermometer (threading.Thread) :
         
         self.token_lock = threading.Lock() # Our threading lock for token access
         self.stopped = threading.Event()  # Event to indicate whether the thread should stop
-        
-    def stop(self): # threading stop/set function
-        self.stopped.set()
+
 
     def setSource(self, source) :
         self.source = source
