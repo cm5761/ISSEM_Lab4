@@ -86,30 +86,7 @@ class SmartNetworkThermometer (threading.Thread) :
         MAX_REQUESTS_PER_IP = 100  # Maximum number of requests per second per IP
         MAX_REQUESTS_TOTAL = 500  # Maximum number of requests per second total
         while not self.stopped.is_set(): # help with infinite loop risk and race conditions
-            try:
-                current_time = datetime.now()
-                if current_time - self.last_check_time >= timedelta(seconds=1):
-                    # Reset rate limiters every second
-                    self.ip_rate_limiter.clear()
-                    self.total_rate_limiter = 0
-                    self.last_check_time = current_time
-
-                if self.total_rate_limiter >= MAX_REQUESTS_TOTAL:
-                    print("Total Rate Limited")
-                    # Total rate limit exceeded, we deliberately do not notify potential attacker - we should log it and flag internally
-                    continue
-
-                msg, addr = self.serverSocket.recvfrom(1024)
-                ip = addr[0]
-                if self.ip_rate_limiter[ip] >= MAX_REQUESTS_PER_IP:
-                    print(ip + "Rate Limited")
-                    # IP rate limit exceeded, we deliberately do not notify potential attacker - we should log it and flag internally
-                    continue
-
-                # Increment rate limiters
-                self.ip_rate_limiter[ip] += 1
-                self.total_rate_limiter += 1
-            
+            try :
                 msg, addr = self.serverSocket.recvfrom(1024)
                 msg = msg.decode("utf-8").strip()
                 cmds = msg.split(' ')
