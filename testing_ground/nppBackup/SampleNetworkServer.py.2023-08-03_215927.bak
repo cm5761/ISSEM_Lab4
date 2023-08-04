@@ -146,6 +146,7 @@ class SmartNetworkThermometer (threading.Thread) :
             time.sleep(self.updatePeriod)
 
 
+
 UPDATE_PERIOD = .05 #in seconds
 SIMULATION_STEP = .1 #in seconds
 
