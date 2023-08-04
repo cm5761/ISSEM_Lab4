@@ -4,9 +4,6 @@ import time
 import math
 import socket
 
-#changes:
-# switched to TCP from UDP in preparation for TLS
-
 class SimpleNetworkClient :
     def __init__(self, port1, port2) :
         self.fig, self.ax = plt.subplots()

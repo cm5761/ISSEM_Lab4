@@ -12,7 +12,7 @@ import errno
 import string
 
 import secrets
-# changes:
+#changes:
 # switched UDP to TCP
 # random fix
 
