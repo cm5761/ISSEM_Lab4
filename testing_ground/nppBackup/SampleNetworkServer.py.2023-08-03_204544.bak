@@ -11,10 +11,6 @@ import errno
 import random
 import string
 
-import secrets
-import string
-from datetime import datetime, timedelta
-
 class SmartNetworkThermometer (threading.Thread) :
     open_cmds = ["AUTH", "LOGOUT"]
     prot_cmds = ["SET_DEGF", "SET_DEGC", "SET_DEGK", "GET_TEMP", "UPDATE_TEMP"]
