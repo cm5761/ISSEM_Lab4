@@ -1,0 +1,26 @@
+def set_environment_variable(variable_name, value):
+    current_os = platform.system()
+    if current_os == 'Windows': #if we ever want to work on OS nuanced commands, this func will permit
+        os.environ[variable_name] = value
+    else:
+        os.environ[variable_name] = value
+
+# Encrypt the value using AES encryption
+def encrypt_value(key, value):
+    cipher_suite = Fernet(key)
+    encrypted_value = cipher_suite.encrypt(value.encode()).decode()
+    return encrypted_value
+
+# Decrypt the encrypted value using AES decryption
+def decrypt_value(key, encrypted_value):
+    cipher_suite = Fernet(key)
+    decrypted_value = cipher_suite.decrypt(encrypted_value.encode()).decode()
+    return decrypted_value
+
+# Generate a random encryption key
+def generate_encryption_key():
+    return Fernet.generate_key()
+
+# Example usage (this is the variable storing the key)
+# For demonstration purposes, we can work on better key storage/retrieval
+encryption_key = generate_encryption_key()
