@@ -108,7 +108,6 @@ class SmartNetworkThermometer (threading.Thread) :
                     else:
                         # otherwise bad command
                         client_socket.send(b"Bad Command\n")
-                    client_socket.close()
 
                 except IOError as e:
                     if e.errno == errno.EWOULDBLOCK:

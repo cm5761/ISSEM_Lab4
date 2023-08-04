@@ -52,6 +52,27 @@ class SmartNetworkThermometer (threading.Thread) :
         self.deg = "K"
                
 
+    def setSource(self, source) :
+        self.source = source
+
+    def setUpdatePeriod(self, updatePeriod) :
+        self.updatePeriod = updatePeriod 
+
+    def setDegreeUnit(self, s) :
+        self.deg = s
+        if self.deg not in ["F", "K", "C"] :
+            self.deg = "K"
+
+    def updateTemperature(self) :
+        self.curTemperature = self.source.getTemperature()
+
+    def getTemperature(self) :
+        if self.deg == "C" :
+            return self.curTemperature - 273
+        if self.deg == "F" :
+            return (self.curTemperature - 273) * 9 / 5 + 32
+
+        return self.curTemperature
 
     def processCommands(self, msg, addr) :
         cmds = msg.split(';')
@@ -61,13 +82,13 @@ class SmartNetworkThermometer (threading.Thread) :
                 if cs[0] == "AUTH":
                     if cs[1] == "!Q#E%T&U8i6y4r2w" :
                         self.tokens.append(''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16)))
-                        self.ssl_server_socket.send(self.tokens[-1].encode("utf-8"), addr)
+                        self.ssl_server_socket.sendto(self.tokens[-1].encode("utf-8"), addr)
                         #print (self.tokens[-1])
                 elif cs[0] == "LOGOUT":
                     if cs[1] in self.tokens :
                         self.tokens.remove(cs[1])
                 else : #unknown command
-                    self.ssl_server_socket.send(b"Invalid Command\n", addr)
+                    self.ssl_server_socket.sendto(b"Invalid Command\n", addr)
             elif c == "SET_DEGF" :
                 self.deg = "F"
             elif c == "SET_DEGC" :
@@ -75,11 +96,11 @@ class SmartNetworkThermometer (threading.Thread) :
             elif c == "SET_DEGK" :
                 self.deg = "K"
             elif c == "GET_TEMP" :
-                self.ssl_server_socket.send(b"%f\n" % self.getTemperature(), addr)
+                self.ssl_server_socket.sendto(b"%f\n" % self.getTemperature(), addr)
             elif c == "UPDATE_TEMP" :
                 self.updateTemperature()
             elif c :
-                self.ssl_server_socket.send(b"Invalid Command\n", addr)
+                self.ssl_server_socket.sendto(b"Invalid Command\n", addr)
 
 
     def run(self):
@@ -108,7 +129,6 @@ class SmartNetworkThermometer (threading.Thread) :
                     else:
                         # otherwise bad command
                         client_socket.send(b"Bad Command\n")
-                    client_socket.close()
 
                 except IOError as e:
                     if e.errno == errno.EWOULDBLOCK:
@@ -121,31 +141,10 @@ class SmartNetworkThermometer (threading.Thread) :
 
             except BlockingIOError:
                 pass
-            
+
             self.updateTemperature()
             time.sleep(self.updatePeriod)
 
-    def setSource(self, source) :
-        self.source = source
-
-    def setUpdatePeriod(self, updatePeriod) :
-        self.updatePeriod = updatePeriod 
-
-    def setDegreeUnit(self, s) :
-        self.deg = s
-        if self.deg not in ["F", "K", "C"] :
-            self.deg = "K"
-
-    def updateTemperature(self) :
-        self.curTemperature = self.source.getTemperature()
-
-    def getTemperature(self) :
-        if self.deg == "C" :
-            return self.curTemperature - 273
-        if self.deg == "F" :
-            return (self.curTemperature - 273) * 9 / 5 + 32
-
-        return self.curTemperature
 
 UPDATE_PERIOD = .05 #in seconds
 SIMULATION_STEP = .1 #in seconds
