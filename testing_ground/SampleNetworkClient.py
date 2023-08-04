@@ -4,10 +4,6 @@ import time
 import math
 import socket
 
-import ssl
-
-context = ssl.create_default_context()
-
 class SimpleNetworkClient :
     def __init__(self, port1, port2) :
         self.fig, self.ax = plt.subplots()
@@ -42,26 +38,16 @@ class SimpleNetworkClient :
             plt.title(time.strftime("%A, %Y-%m-%d", time.localtime(now)))
 
     def getTemperatureFromPort(self, p, tok) :
-        # wrap the socket
-        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        ssl_socket = context.wrap_socket(s, server_hostname="127.0.0.1")
-        # connect to the server
-        ssl_socket.connect(("127.0.0.1", p))
-        
-        ssl_socket.send(b"%s;GET_TEMP" % tok)
-        msg = ssl_socket.recv(1024)
+        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        s.sendto(b"%s;GET_TEMP" % tok, ("127.0.0.1", p))
+        msg, addr = s.recvfrom(1024)
         m = msg.decode("utf-8")
         return (float(m))
 
     def authenticate(self, p, pw) :
-        # wrap the socket
-        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        ssl_socket = context.wrap_socket(s, server_hostname="127.0.0.1")
-        # connect to the server
-        ssl_socket.connect(("127.0.0.1", p))
-        
-        ssl_socket.send(b"AUTH %s" % pw)
-        msg = ssl_socket.recv(1024)
+        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        s.sendto(b"AUTH %s" % pw, ("127.0.0.1", p))
+        msg, addr = s.recvfrom(1024)
         return msg.strip()
 
     def updateInfTemp(self, frame) :
@@ -83,8 +69,9 @@ class SimpleNetworkClient :
         self.incTemps.append(self.getTemperatureFromPort(self.incPort, self.incToken)-273)
         #self.incTemps.append(self.incTemps[-1] + 1)
         self.incTemps = self.incTemps[-30:]
-        self.incLn.set_data(range(30),self.incTemps)
-        
+        self.incLn.set_data(range(30), self.incTemps)
+        return self.incLn,
+
 snc = SimpleNetworkClient(23456, 23457)
 
 plt.grid()
