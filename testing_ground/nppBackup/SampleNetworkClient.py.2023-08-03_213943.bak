@@ -48,20 +48,16 @@ class SimpleNetworkClient :
         # connect to the server
         ssl_socket.connect(("127.0.0.1", p))
         
-        ssl_socket.send(b"%s;GET_TEMP" % tok)
-        msg = ssl_socket.recv(1024)
+        s.send(b"%s;GET_TEMP" % tok)
+        msg = s.recv(1024)
         m = msg.decode("utf-8")
         return (float(m))
 
     def authenticate(self, p, pw) :
-        # wrap the socket
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        ssl_socket = context.wrap_socket(s, server_hostname="127.0.0.1")
-        # connect to the server
-        ssl_socket.connect(("127.0.0.1", p))
-        
-        ssl_socket.send(b"AUTH %s" % pw)
-        msg = ssl_socket.recv(1024)
+        s.connect(("127.0.0.1", p))
+        s.send(b"AUTH %s" % pw)
+        msg = s.recv(1024)
         return msg.strip()
 
     def updateInfTemp(self, frame) :
