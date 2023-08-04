@@ -94,47 +94,42 @@ class SmartNetworkThermometer (threading.Thread) :
 
     def run(self) : #the running function
         while True:
+            clientSocket, addr = self.serverSocket.accept()
+            conn = context.wrap_socket(clientSocket, server_side=True)
             try:
-                clientSocket, addr = self.serverSocket.accept()
-                conn = context.wrap_socket(clientSocket, server_side=True)
-                try:
-                    msg = conn.recv(1024)
-                    msg = msg.decode("utf-8").strip()
-                    cmds = msg.split(' ')
-                    if len(cmds) == 1 : # protected commands case
-                        semi = msg.find(';')
-                        if semi != -1 : #if we found the semicolon
-                            #print (msg)
-                            if msg[:semi] in self.tokens : #if its a valid token
-                                self.processCommands(msg[semi+1:], addr)
-                            else :
-                                conn.send(b"Bad Token\n")
+                msg = conn.recv(1024)
+                msg = msg.decode("utf-8").strip()
+                cmds = msg.split(' ')
+                if len(cmds) == 1 : # protected commands case
+                    semi = msg.find(';')
+                    if semi != -1 : #if we found the semicolon
+                        #print (msg)
+                        if msg[:semi] in self.tokens : #if its a valid token
+                            self.processCommands(msg[semi+1:], addr)
                         else :
-                                conn.send(b"Bad Command\n")
-                    elif len(cmds) == 2 :
-                        if cmds[0] in self.open_cmds : #if its AUTH or LOGOUT
-                            self.processCommands(msg, addr) 
-                        else :
-                            conn.send(b"Authenticate First\n")
+                            conn.send(b"Bad Token\n")
                     else :
-                        # otherwise bad command
-                        conn.send(b"Bad Command\n")
-
-                except IOError as e :
-                    if e.errno == errno.EWOULDBLOCK :
-                        #do nothing
-                        pass
+                            conn.send(b"Bad Command\n")
+                elif len(cmds) == 2 :
+                    if cmds[0] in self.open_cmds : #if its AUTH or LOGOUT
+                        self.processCommands(msg, addr) 
                     else :
-                        #do nothing for now
-                        pass
-                    msg = ""
+                        conn.send(b"Authenticate First\n")
+                else :
+                    # otherwise bad command
+                    conn.send(b"Bad Command\n")
 
-            except BlockingIOError:
-                pass
+            except IOError as e :
+                if e.errno == errno.EWOULDBLOCK :
+                    #do nothing
+                    pass
+                else :
+                    #do nothing for now
+                    pass
+                msg = ""
 
             self.updateTemperature()
             time.sleep(self.updatePeriod)
-
 
 
 UPDATE_PERIOD = .05 #in seconds
