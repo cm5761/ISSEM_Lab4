@@ -18,6 +18,7 @@ import socket
 import ssl
 
 host = "127.0.0.1"
+context = ssl.create_default_context()
 
 class SmartNetworkThermometer (threading.Thread) :
     open_cmds = ["AUTH", "LOGOUT"]
