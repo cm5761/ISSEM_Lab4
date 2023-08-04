@@ -38,18 +38,16 @@ class SimpleNetworkClient :
             plt.title(time.strftime("%A, %Y-%m-%d", time.localtime(now)))
 
     def getTemperatureFromPort(self, p, tok) :
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(("127.0.0.1", p))
-            s.sendall(b"%s;GET_TEMP" % tok)
-            msg = s.recv(1024)
+        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        s.sendto(b"%s;GET_TEMP" % tok, ("127.0.0.1", p))
+        msg, addr = s.recvfrom(1024)
         m = msg.decode("utf-8")
         return (float(m))
 
     def authenticate(self, p, pw) :
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(("127.0.0.1", p))
-            s.sendall(b"AUTH %s" % pw)
-            msg = s.recv(1024)
+        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        s.sendto(b"AUTH %s" % pw, ("127.0.0.1", p))
+        msg, addr = s.recvfrom(1024)
         return msg.strip()
 
     def updateInfTemp(self, frame) :
