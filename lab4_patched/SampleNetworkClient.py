@@ -3,6 +3,10 @@ import matplotlib.animation as animation
 import time
 import math
 import socket
+import hvac
+import os
+# Run in terminal or separate thread
+
 
 class SimpleNetworkClient :
     def __init__(self, port1, port2) :
@@ -26,6 +30,10 @@ class SimpleNetworkClient :
         self.ani = animation.FuncAnimation(self.fig, self.updateInfTemp, interval=500)
         self.ani2 = animation.FuncAnimation(self.fig, self.updateIncTemp, interval=500)
 
+        self.url='http://'+decrypt_value(encryption_key,os.environ.get('SET_IP'))+':'+decrypt_value(encryption_key,os.environ.get('SET_PORT'))
+        print("PROOF: Decrypted URL: ", self.url) # THIS WOULD NEVER BE IN PRODUCTION, THIS IS FOR ASSIGNMENT
+        self.set_token = decrypt_value(encryption_key,os.environ.get('SET_TOKEN')) # THIS WOULD NEVER BE IN PRODUCTION, THIS IS FOR ASSIGNMENT
+        print("PROOF: Decrypted Token: ",self.set_token)
     def updateTime(self) :
         now = time.time()
         if math.floor(now) > math.floor(self.lastTime) :
@@ -39,21 +47,32 @@ class SimpleNetworkClient :
 
     def getTemperatureFromPort(self, p, tok) :
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        s.sendto(b"%s;GET_TEMP" % tok, ("127.0.0.1", p))
+        s.sendto(b"%s;GET_TEMP" % tok, (decrypt_value(encryption_key,os.environ.get('SET_IP')), p))
         msg, addr = s.recvfrom(1024)
         m = msg.decode("utf-8")
         return (float(m))
 
-    def authenticate(self, p, pw) :
+    def authenticate(self, p) :
+        #Authenticate with Hashicorp Vault
+        client = hvac.Client(url=self.url, token=self.set_token,)
+        #Read password from Hashicorp Vault
+        read_response = client.secrets.kv.v2.read_secret_version(path=decrypt_value(encryption_key,os.environ.get('SET_PATH')),raise_on_deleted_version=True)
+        password = read_response['data']['data']['password']
+        print("PROOF: encrypted password: ", password) # THIS WOULD NEVER BE IN PRODUCTION, THIS IS FOR ASSIGNMENT
+        password = decrypt_value(encryption_key,password)
+        print("PROOF: decrypted password: ", password) # THIS WOULD NEVER BE IN PRODUCTION, THIS IS FOR ASSIGNMENT
+        
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        s.sendto(b"AUTH %s" % pw, ("127.0.0.1", p))
-        msg, addr = s.recvfrom(1024)
+        message = encrypt_value(encryption_key,password).encode("utf-8"), (decrypt_value(encryption_key,os.environ.get('SET_IP')), p)
+        print("PROOF - MESSAGE SENT: ",message)  # THIS WOULD NEVER BE IN PRODUCTION, THIS IS FOR ASSIGNMENT
+        s.sendto(encrypt_value(encryption_key,password).encode("utf-8"), (decrypt_value(encryption_key,os.environ.get('SET_IP')), p) )
+        msg, addr = s.recvfrom(1024) # This will crash unless server is running (forcibly close)
         return msg.strip()
 
     def updateInfTemp(self, frame) :
         self.updateTime()
         if self.infToken is None : #not yet authenticated
-            self.infToken = self.authenticate(self.infPort, b"!Q#E%T&U8i6y4r2w")
+            self.infToken = self.authenticate(self.infPort)
 
         self.infTemps.append(self.getTemperatureFromPort(self.infPort, self.infToken)-273)
         #self.infTemps.append(self.infTemps[-1] + 1)
@@ -64,7 +83,7 @@ class SimpleNetworkClient :
     def updateIncTemp(self, frame) :
         self.updateTime()
         if self.incToken is None : #not yet authenticated
-            self.incToken = self.authenticate(self.incPort, b"!Q#E%T&U8i6y4r2w")
+            self.incToken = self.authenticate(self.incPort)
 
         self.incTemps.append(self.getTemperatureFromPort(self.incPort, self.incToken)-273)
         #self.incTemps.append(self.incTemps[-1] + 1)
@@ -76,3 +95,4 @@ snc = SimpleNetworkClient(23456, 23457)
 
 plt.grid()
 plt.show()
+snc.authenticate(23456) # Note we will see an error because the server is not running
