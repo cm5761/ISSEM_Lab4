@@ -84,8 +84,8 @@ class SmartNetworkThermometer (threading.Thread) :
     def run(self) : #the running function
         while True : 
             try :
-                clientSocket, addr = self.serverSocket.accept()
-                msg = clientSocket.recv(1024).decode("utf-8").strip()
+                msg, addr = self.serverSocket.recvfrom(1024)
+                msg = msg.decode("utf-8").strip()
                 cmds = msg.split(' ')
                 if len(cmds) == 1 : # protected commands case
                     semi = msg.find(';')
@@ -105,8 +105,6 @@ class SmartNetworkThermometer (threading.Thread) :
                 else :
                     # otherwise bad command
                     self.serverSocket.sendto(b"Bad Command\n", addr)
-                    
-                clientSocket.close() 
     
             except IOError as e :
                 if e.errno == errno.EWOULDBLOCK :
@@ -154,30 +152,18 @@ class SimpleClient :
             plt.title(time.strftime("%A, %Y-%m-%d", time.localtime(now)))
 
 
-    def updateInfTemp(self, frame):
+    def updateInfTemp(self, frame) :
         self.updateTime()
-        inf_temp = self.infTherm.getTemperature() - 273
-
-        # Connect to the server using TCP and send the temperature update
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
-            clientSocket.connect(("127.0.0.1", 23456))
-            clientSocket.sendall(str(inf_temp).encode("utf-8"))
-
-        self.infTemps.append(inf_temp)
+        self.infTemps.append(self.infTherm.getTemperature()-273)
+        #self.infTemps.append(self.infTemps[-1] + 1)
         self.infTemps = self.infTemps[-30:]
         self.infLn.set_data(range(30), self.infTemps)
         return self.infLn,
 
-    def updateIncTemp(self, frame):
+    def updateIncTemp(self, frame) :
         self.updateTime()
-        inc_temp = self.incTherm.getTemperature() - 273
-
-        # Connect to the server using TCP and send the temperature update
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
-            clientSocket.connect(("127.0.0.1", 23457))
-            clientSocket.sendall(str(inc_temp).encode("utf-8"))
-
-        self.incTemps.append(inc_temp)
+        self.incTemps.append(self.incTherm.getTemperature()-273)
+        #self.incTemps.append(self.incTemps[-1] + 1)
         self.incTemps = self.incTemps[-30:]
         self.incLn.set_data(range(30), self.incTemps)
         return self.incLn,
