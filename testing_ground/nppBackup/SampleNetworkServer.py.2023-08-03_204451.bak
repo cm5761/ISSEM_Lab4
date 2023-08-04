@@ -29,10 +29,6 @@ class SmartNetworkThermometer (threading.Thread) :
         fcntl.fcntl(self.serverSocket, fcntl.F_SETFL, os.O_NONBLOCK)
 
         self.deg = "K"
-        
-        self.token_lock = threading.Lock() # Our threading lock for token access
-        self.stopped = threading.Event()  # Event to indicate whether the thread should stop
-
 
     def setSource(self, source) :
         self.source = source
