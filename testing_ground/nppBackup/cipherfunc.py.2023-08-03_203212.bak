@@ -1,9 +1,5 @@
 import hvac
 import sys
-import os
-import platform
-from cryptography.fernet import Fernet
-
 
 def set_environment_variable(variable_name, value):
     current_os = platform.system()

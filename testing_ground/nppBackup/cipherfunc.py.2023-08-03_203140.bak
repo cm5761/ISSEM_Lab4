@@ -1,10 +1,3 @@
-import hvac
-import sys
-import os
-import platform
-from cryptography.fernet import Fernet
-
-
 def set_environment_variable(variable_name, value):
     current_os = platform.system()
     if current_os == 'Windows': #if we ever want to work on OS nuanced commands, this func will permit
@@ -47,7 +40,8 @@ set_environment_variable('SET_PORT', encrypted_port)
 
 print("Environmental variables setup successfully.")
 
-
+import hvac
+import sys
 
 # Authentication
 client = hvac.Client(
