@@ -1,11 +1,12 @@
+import threading
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import infinc
 import time
 import math
-import socket
 
-class SimpleNetworkClient :
-    def __init__(self, port1, port2) :
+class SimpleClient :
+    def __init__(self, therm1, therm2) :
         self.fig, self.ax = plt.subplots()
         now = time.time()
         self.lastTime = now
@@ -17,11 +18,8 @@ class SimpleNetworkClient :
         plt.xticks(range(30), self.times, rotation=45)
         plt.ylim((20,50))
         plt.legend(handles=[self.infLn, self.incLn])
-        self.infPort = port1
-        self.incPort = port2
-
-        self.infToken = None
-        self.incToken = None
+        self.infTherm = therm1
+        self.incTherm = therm2
 
         self.ani = animation.FuncAnimation(self.fig, self.updateInfTemp, interval=500)
         self.ani2 = animation.FuncAnimation(self.fig, self.updateIncTemp, interval=500)
@@ -37,25 +35,10 @@ class SimpleNetworkClient :
             plt.xticks(range(30), self.times,rotation = 45)
             plt.title(time.strftime("%A, %Y-%m-%d", time.localtime(now)))
 
-    def getTemperatureFromPort(self, p, tok) :
-        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        s.sendto(b"%s;GET_TEMP" % tok, ("127.0.0.1", p))
-        msg, addr = s.recvfrom(1024)
-        m = msg.decode("utf-8")
-        return (float(m))
-
-    def authenticate(self, p, pw) :
-        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        s.sendto(b"AUTH %s" % pw, ("127.0.0.1", p))
-        msg, addr = s.recvfrom(1024)
-        return msg.strip()
 
     def updateInfTemp(self, frame) :
         self.updateTime()
-        if self.infToken is None : #not yet authenticated
-            self.infToken = self.authenticate(self.infPort, b"!Q#E%T&U8i6y4r2w")
-
-        self.infTemps.append(self.getTemperatureFromPort(self.infPort, self.infToken)-273)
+        self.infTemps.append(self.infTherm.getTemperature()-273)
         #self.infTemps.append(self.infTemps[-1] + 1)
         self.infTemps = self.infTemps[-30:]
         self.infLn.set_data(range(30), self.infTemps)
@@ -63,16 +46,34 @@ class SimpleNetworkClient :
 
     def updateIncTemp(self, frame) :
         self.updateTime()
-        if self.incToken is None : #not yet authenticated
-            self.incToken = self.authenticate(self.incPort, b"!Q#E%T&U8i6y4r2w")
-
-        self.incTemps.append(self.getTemperatureFromPort(self.incPort, self.incToken)-273)
+        self.incTemps.append(self.incTherm.getTemperature()-273)
         #self.incTemps.append(self.incTemps[-1] + 1)
         self.incTemps = self.incTemps[-30:]
         self.incLn.set_data(range(30), self.incTemps)
         return self.incLn,
 
-snc = SimpleNetworkClient(23456, 23457)
+UPDATE_PERIOD = .05 #in seconds
+SIMULATION_STEP = .1 #in seconds
+
+#create a new instance of IncubatorSimulator
+bob = infinc.Human(mass = 8, length = 1.68, temperature = 36 + 273)
+bobThermo = infinc.SmartThermometer(bob, UPDATE_PERIOD)
+bobThermo.start() #start the thread
+
+inc = infinc.Incubator(width = 1, depth=1, height = 1, temperature = 37 + 273, roomTemperature = 20 + 273)
+incThermo = infinc.SmartThermometer(inc, UPDATE_PERIOD)
+incThermo.start() #start the thread
+
+incHeater = infinc.SmartHeater(powerOutput = 1500, setTemperature = 45 + 273, thermometer = incThermo, updatePeriod = UPDATE_PERIOD)
+inc.setHeater(incHeater)
+incHeater.start() #start the thread
+
+sim = infinc.Simulator(infant = bob, incubator = inc, roomTemp = 20 + 273, timeStep = SIMULATION_STEP, sleepTime = SIMULATION_STEP / 10)
+
+sim.start()
+
+sc = SimpleClient(bobThermo, incThermo)
 
 plt.grid()
 plt.show()
+

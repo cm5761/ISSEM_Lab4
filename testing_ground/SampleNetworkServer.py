@@ -1,7 +1,7 @@
 import threading
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-
+import infinc
 import time
 import math
 import socket
@@ -11,162 +11,162 @@ import errno
 import random
 import string
 
-from datetime import datetime, timedelta
-
-from simpleclient import * # importing simpleclient instead of duplicating code
-from cipherfunc import *
-
-import infinc
-import hvac # hashicorp
-
-
-class SmartNetworkThermometer(threading.Thread):
+class SmartNetworkThermometer (threading.Thread) :
     open_cmds = ["AUTH", "LOGOUT"]
     prot_cmds = ["SET_DEGF", "SET_DEGC", "SET_DEGK", "GET_TEMP", "UPDATE_TEMP"]
 
-    def __init__(self, source, updatePeriod, port):
-        threading.Thread.__init__(self, daemon=True)
+    def __init__ (self, source, updatePeriod, port) :
+        threading.Thread.__init__(self, daemon = True) 
+        #set daemon to be true, so it doesn't block program from exiting
         self.source = source
         self.updatePeriod = updatePeriod
         self.curTemperature = 0
         self.updateTemperature()
         self.tokens = []
-        self.expiration_minutes = 180 # modifiable as appropriate
 
         self.serverSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        self.serverSocket.bind((decrypt_value(encryption_key,os.environ.get('SET_IP')), port))
+        self.serverSocket.bind(("127.0.0.1", port))
         fcntl.fcntl(self.serverSocket, fcntl.F_SETFL, os.O_NONBLOCK)
 
         self.deg = "K"
-        self.token_lock = threading.Lock() # Our threading lock for token access
-        self.stopped = threading.Event()  # Event to indicate whether the thread should stop
 
-        # hashicorp credentials
-        self.url='http://'+decrypt_value(encryption_key,os.environ.get('SET_IP'))+':'+decrypt_value(encryption_key,os.environ.get('SET_PORT'))
-        # Retrieve the token from the environment variable
-        self.set_token = decrypt_value(encryption_key,os.environ.get('SET_TOKEN'))
-        
-    def stop(self): # threading stop/set function
-        self.stopped.set()
-
-    def setSource(self, source):
+    def setSource(self, source) :
         self.source = source
 
-    def setUpdatePeriod(self, updatePeriod):
-        self.updatePeriod = updatePeriod
+    def setUpdatePeriod(self, updatePeriod) :
+        self.updatePeriod = updatePeriod 
 
-    def setDegreeUnit(self, s):
+    def setDegreeUnit(self, s) :
         self.deg = s
-        if self.deg not in ["F", "K", "C"]:
+        if self.deg not in ["F", "K", "C"] :
             self.deg = "K"
 
-    def updateTemperature(self):
+    def updateTemperature(self) :
         self.curTemperature = self.source.getTemperature()
 
-    def getTemperature(self):
-        if self.deg == "C":
+    def getTemperature(self) :
+        if self.deg == "C" :
             return self.curTemperature - 273
-        if self.deg == "F":
+        if self.deg == "F" :
             return (self.curTemperature - 273) * 9 / 5 + 32
 
         return self.curTemperature
 
-    def authenticate(self) :
-        #Authenticate with Hashicorp Vault
-        client = hvac.Client(url=self.url, token=self.set_token,)
-        #Read password from Hashicorp Vault
-        read_response = client.secrets.kv.v2.read_secret_version(path=decrypt_value(encryption_key,os.environ.get('SET_PATH')),raise_on_deleted_version=True)
-        password = decrypt_value(encryption_key,read_response['data']['data']['password'])
-        return password
+    def processCommands(self, msg, addr) :
+        cmds = msg.split(';')
+        for c in cmds :
+            cs = c.split(' ')
+            if len(cs) == 2 : #should be either AUTH or LOGOUT
+                if cs[0] == "AUTH":
+                    if cs[1] == "!Q#E%T&U8i6y4r2w" :
+                        self.tokens.append(''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16)))
+                        self.serverSocket.sendto(self.tokens[-1].encode("utf-8"), addr)
+                        #print (self.tokens[-1])
+                elif cs[0] == "LOGOUT":
+                    if cs[1] in self.tokens :
+                        self.tokens.remove(cs[1])
+                else : #unknown command
+                    self.serverSocket.sendto(b"Invalid Command\n", addr)
+            elif c == "SET_DEGF" :
+                self.deg = "F"
+            elif c == "SET_DEGC" :
+                self.deg = "C"
+            elif c == "SET_DEGK" :
+                self.deg = "K"
+            elif c == "GET_TEMP" :
+                self.serverSocket.sendto(b"%f\n" % self.getTemperature(), addr)
+            elif c == "UPDATE_TEMP" :
+                self.updateTemperature()
+            elif c :
+                self.serverSocket.sendto(b"Invalid Command\n", addr)
 
-def processCommands(self, msg, addr):
-    cmds = msg.split(';')
-    for c in cmds:
-        cs = c.split(' ')
-        if len(cs) == 2:  # should be either AUTH or LOGOUT
-            if cs[0] == "AUTH":
-                # Reading our secret
-                password = self.authenticate()
-                if cs[1] == password:
-                    with self.token_lock:
-                        token = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
-                        expiration_time = datetime.now() + timedelta(minutes=self.expiration_minutes)
-                        # Set token expiration time
-                        self.tokens[token] = expiration_time
-                    self.serverSocket.sendto(encrypt_value(encryption_key,token).encode("utf-8"), addr)
-            elif cs[0] == "LOGOUT":
-                with self.token_lock: # our lock implemented
-                    token = cs[1]
-                    if self.tokens.get(token): # using get to prevent keyerrors
-                        del self.tokens[token]
-            else:  # unknown command
-                self.serverSocket.sendto(encrypt_value(encryption_key,"Invalid Command\n").encode("utf-8"), addr)
-        elif c == "SET_DEGF":
-            self.deg = "F"
-        elif c == "SET_DEGC":
-            self.deg = "C"
-        elif c == "SET_DEGK":
-            self.deg = "K"
-        elif c == "GET_TEMP":
-            self.serverSocket.sendto(encrypt_value(encryption_key,"{}\n".format(self.getTemperature())).encode("utf-8"), addr)
-        elif c == "UPDATE_TEMP":
-            self.updateTemperature()
-        elif c:
-            self.serverSocket.sendto(encrypt_value(encryption_key,"Invalid Command\n").encode("utf-8"), addr)
 
-    def run(self):
-        MAX_TOKENS = 20  # Maximum number of tokens allowed
-        while not self.stopped.is_set(): # help with infinite loop risk and race conditions
-            try:
-                # Remove expired tokens
-                with self.token_lock:
-                    current_time = datetime.now()
-                    expired_tokens = [token for token, expiration_time in self.tokens.items() if expiration_time <= current_time]
-                    for token in expired_tokens:
-                        del self.tokens[token]
-
+    def run(self) : #the running function
+        while True : 
+            try :
                 msg, addr = self.serverSocket.recvfrom(1024)
                 msg = msg.decode("utf-8").strip()
-                msg = decrypt_value(encryption_key,msg) #decrypting the received message
                 cmds = msg.split(' ')
-                if len(cmds) == 1:  # protected commands case
+                if len(cmds) == 1 : # protected commands case
                     semi = msg.find(';')
-                    if semi != -1:  # if we found the semicolon
-                        with self.token_lock:
-                            if msg[:semi] in self.tokens:  # if it's a valid token
-                                self.processCommands(msg[semi + 1:], addr)
-                            else:
-                                self.serverSocket.sendto(encrypt_value(encryption_key,"Bad Token\n").encode("utf-8"), addr)
-                    else:
-                        self.serverSocket.sendto(encrypt_value(encryption_key,"Bad Command\n").encode("utf-8"), addr)
-                elif len(cmds) == 2:
-                    if cmds[0] in self.open_cmds:  # if it's AUTH or LOGOUT
-                        with self.token_lock:
-                            if len(self.tokens) >= MAX_TOKENS: #check if we have reached the maximum number of permitted tokens
-                                self.serverSocket.sendto(encrypt_value(encryption_key,"Too many tokens\n").encode("utf-8"), addr)
-                            else:
-                                self.processCommands(msg, addr)
-                    else:
-                        self.serverSocket.sendto(encrypt_value(encryption_key,"Authenticate First\n").encode("utf-8"), addr)
-                else:
-                    self.serverSocket.sendto(encrypt_value(encryption_key,"Bad Command\n").encode("utf-8"), addr)
+                    if semi != -1 : #if we found the semicolon
+                        #print (msg)
+                        if msg[:semi] in self.tokens : #if its a valid token
+                            self.processCommands(msg[semi+1:], addr)
+                        else :
+                            self.serverSocket.sendto(b"Bad Token\n", addr)
+                    else :
+                            self.serverSocket.sendto(b"Bad Command\n", addr)
+                elif len(cmds) == 2 :
+                    if cmds[0] in self.open_cmds : #if its AUTH or LOGOUT
+                        self.processCommands(msg, addr) 
+                    else :
+                        self.serverSocket.sendto(b"Authenticate First\n", addr)
+                else :
+                    # otherwise bad command
+                    self.serverSocket.sendto(b"Bad Command\n", addr)
+    
+            except IOError as e :
+                if e.errno == errno.EWOULDBLOCK :
+                    #do nothing
+                    pass
+                else :
+                    #do nothing for now
+                    pass
+                msg = ""
 
-            except IOError as e:
-                if e.errno == errno.EWOULDBLOCK:
-                    # do nothing
-                    pass
-                else:
-                    # do nothing for now
-                    pass
+ 
 
             self.updateTemperature()
             time.sleep(self.updatePeriod)
-            if threading.currentThread().interrupted: # break out of the loop if the thread is interrupted. This check is used as a backup in case the interruption is not handled through the self.stopped event.
-                break
-
-# SimpleClient is now imported
 
 
+class SimpleClient :
+    def __init__(self, therm1, therm2) :
+        self.fig, self.ax = plt.subplots()
+        now = time.time()
+        self.lastTime = now
+        self.times = [time.strftime("%H:%M:%S", time.localtime(now-i)) for i in range(30, 0, -1)]
+        self.infTemps = [0]*30
+        self.incTemps = [0]*30
+        self.infLn, = plt.plot(range(30), self.infTemps, label="Infant Temperature")
+        self.incLn, = plt.plot(range(30), self.incTemps, label="Incubator Temperature")
+        plt.xticks(range(30), self.times, rotation=45)
+        plt.ylim((20,50))
+        plt.legend(handles=[self.infLn, self.incLn])
+        self.infTherm = therm1
+        self.incTherm = therm2
+
+        self.ani = animation.FuncAnimation(self.fig, self.updateInfTemp, interval=500)
+        self.ani2 = animation.FuncAnimation(self.fig, self.updateIncTemp, interval=500)
+
+    def updateTime(self) :
+        now = time.time()
+        if math.floor(now) > math.floor(self.lastTime) :
+            t = time.strftime("%H:%M:%S", time.localtime(now))
+            self.times.append(t)
+            #last 30 seconds of of data
+            self.times = self.times[-30:]
+            self.lastTime = now
+            plt.xticks(range(30), self.times,rotation = 45)
+            plt.title(time.strftime("%A, %Y-%m-%d", time.localtime(now)))
+
+
+    def updateInfTemp(self, frame) :
+        self.updateTime()
+        self.infTemps.append(self.infTherm.getTemperature()-273)
+        #self.infTemps.append(self.infTemps[-1] + 1)
+        self.infTemps = self.infTemps[-30:]
+        self.infLn.set_data(range(30), self.infTemps)
+        return self.infLn,
+
+    def updateIncTemp(self, frame) :
+        self.updateTime()
+        self.incTemps.append(self.incTherm.getTemperature()-273)
+        #self.incTemps.append(self.incTemps[-1] + 1)
+        self.incTemps = self.incTemps[-30:]
+        self.incLn.set_data(range(30), self.incTemps)
+        return self.incLn,
 
 UPDATE_PERIOD = .05 #in seconds
 SIMULATION_STEP = .1 #in seconds
@@ -194,3 +194,4 @@ sc = SimpleClient(bobThermo, incThermo)
 
 plt.grid()
 plt.show()
+
