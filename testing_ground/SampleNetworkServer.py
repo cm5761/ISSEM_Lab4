@@ -12,9 +12,15 @@ import errno
 import string
 
 import secrets
+from collections import deque
+from threading import Lock
+
 # changes:
 # switched UDP to TCP
 # random fix
+
+MAX_REQUESTS_PER_SECOND = 100
+MAX_IPS = 10
 
 class SmartNetworkThermometer (threading.Thread) :
     open_cmds = ["AUTH", "LOGOUT"]
@@ -34,7 +40,31 @@ class SmartNetworkThermometer (threading.Thread) :
         self.serverSocket.listen(5)  # Listen for incoming connections
 
         self.deg = "K"
-
+        
+        
+        # Rate limiter attributes (for DDOS and DOS attacks)
+        self.max_requests_per_second = MAX_REQUESTS_PER_SECOND
+        self.max_ips = MAX_IPS
+        self.ip_request_times = {}
+        self.ip_locks = {}        
+        
+    def is_rate_limited(self, ip):
+        if ip not in self.ip_request_times:
+            self.ip_request_times[ip] = deque(maxlen=self.max_requests_per_second)
+            self.ip_locks[ip] = Lock()
+            
+        with self.ip_locks[ip]:
+            request_times = self.ip_request_times[ip]
+            current_time = time.time()
+            while request_times and current_time - request_times[0] > 1:
+                request_times.popleft()
+                
+            if len(request_times) >= self.max_requests_per_second:
+                return True
+            
+            request_times.append(current_time)
+            return False
+            
     def setSource(self, source) :
         self.source = source
 
@@ -87,32 +117,45 @@ class SmartNetworkThermometer (threading.Thread) :
 
 
 
-    def run(self) : #the running function
-        while True : 
-            try :
+    def run(self):  # the running function
+        while True:
+            try:
                 clientSocket, addr = self.serverSocket.accept()
+                ip, _ = addr
+                
+                if len(self.ip_request_times) > self.max_ips:
+                    clientSocket.send(b"Too many IPs\n")
+                    clientSocket.close()
+                    continue
+                
+                if self.is_rate_limited(ip):
+                    clientSocket.send(b"Rate limited\n")
+                    clientSocket.close()
+                    continue
+                
                 msg = clientSocket.recv(1024).decode("utf-8").strip()
                 cmds = msg.split(' ')
-                if len(cmds) == 1 : # protected commands case
+                if len(cmds) == 1:  # protected commands case
                     semi = msg.find(';')
-                    if semi != -1 : #if we found the semicolon
-                        #print (msg)
-                        if msg[:semi] in self.tokens : #if its a valid token
-                            self.processCommands(msg[semi+1:], clientSocket)
-                        else :
+                    if semi != -1:  # if we found the semicolon
+                        # print (msg)
+                        if msg[:semi] in self.tokens:  # if its a valid token
+                            self.processCommands(msg[semi + 1:], clientSocket)
+                        else:
                             clientSocket.send(b"Bad Token\n")
-                    else :
-                            clientSocket.send(b"Bad Command\n")
-                elif len(cmds) == 2 :
-                    if cmds[0] in self.open_cmds : #if its AUTH or LOGOUT
-                        self.processCommands(msg, clientSocket) 
-                    else :
+                    else:
+                        clientSocket.send(b"Bad Command\n")
+                elif len(cmds) == 2:
+                    if cmds[0] in self.open_cmds:  # if its AUTH or LOGOUT
+                        self.processCommands(msg, clientSocket)
+                    else:
                         clientSocket.send(b"Authenticate First\n")
-                else :
+                else:
                     # otherwise bad command
                     clientSocket.send(b"Bad Command\n")
-                    
-                clientSocket.close() 
+
+                clientSocket.close()
+
 
             except IOError as e :
                 if e.errno == errno.EWOULDBLOCK :
