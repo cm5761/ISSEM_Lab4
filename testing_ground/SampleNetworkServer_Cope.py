@@ -28,7 +28,7 @@ class SmartNetworkThermometer (threading.Thread) :
         self.updatePeriod = updatePeriod
         self.curTemperature = 0
         self.updateTemperature()
-        self.tokens = []
+        self.tokens = {}
         self.expiration_minutes = 180 # modifiable as appropriate
 
         self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # switched to TCP in preparation for TLS
