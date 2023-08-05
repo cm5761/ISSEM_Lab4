@@ -21,7 +21,6 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | -------------  | ------------- | ------------- | ------------- | 
 | socket.recfrom blocks until data is received  | Content Cell  | Open  | 2 |
 | TLS to secure NW communication   | Content Cell  | Open  | ------------- |
-| TLS to secure NW communication   | Content Cell  | Open  | ------------- |
 | Vulnerability in the OS library   | Content Cell  | Open  |  1 |
 | DDoS counter/rate limiter (SampleNetworkServer.py)  |  Alon Hillel-Tuch   | Open  | ------------- |
 | Input Validation  | Copeland Myrie  | Open  |  4 |
