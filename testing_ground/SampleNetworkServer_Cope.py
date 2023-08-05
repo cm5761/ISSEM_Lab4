@@ -29,12 +29,14 @@ class SmartNetworkThermometer (threading.Thread) :
         self.curTemperature = 0
         self.updateTemperature()
         self.tokens = []
+        self.expiration_minutes = 180 # modifiable as appropriate
 
         self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # switched to TCP in preparation for TLS
         self.serverSocket.bind(("127.0.0.1", port))
         self.serverSocket.listen(5)  # Listen for incoming connections
 
         self.deg = "K"
+        self.token_lock = threading.Lock() # Our threading lock for token access
 
     def setSource(self, source) :
         self.source = source
