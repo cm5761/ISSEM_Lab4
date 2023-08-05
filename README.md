@@ -30,7 +30,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | Token Usage  | Content Cell  | Open  |  8 |
 | Timing Attack  | Content Cell  | Open  |  9 |
 | Poor Randomness  | Alon Hillel-Tuch  | Patched  |  10 |
-| Content Cell | Content Cell  | Open  |  ------------- |
+| -------------  | ------------- | ------------- | ------------- |
 
 
 Status types:
