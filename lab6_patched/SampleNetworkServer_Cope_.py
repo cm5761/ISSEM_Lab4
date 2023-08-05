@@ -102,9 +102,9 @@ class SmartNetworkThermometer(threading.Thread):
     							del self.tokens[token]
     				else:  # unknown command
     					self.serverSocket.sendto(encrypt_value(encryption_key,"Invalid Command\n").encode("utf-8"), addr)
-    			elif c in self.prot_cmds:
+    			elif c[0] in self.prot_cmds:
     				with self.token_lock:
-    					authenticate_token = any (token in self.tokens and datetime.now() <= self.tokens[token] for token in cs) #check if token is valid and not expired
+    					authenticate_token = any (token in self.tokens and datetime.now() <= self.tokens[token] for token in cmd[1:]) #check if token is valid and not expired
     					if authenticate_token: #If token is true, check if command is one of the prot_cmds and set the self.deg value
     						if c == "SET_DEGF":
     							self.deg = "F"
