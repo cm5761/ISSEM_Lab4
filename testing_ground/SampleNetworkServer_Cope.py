@@ -59,47 +59,47 @@ class SmartNetworkThermometer (threading.Thread) :
         return self.curTemperature
 
     def processCommands(self, msg, addr):
-    		cmds = msg.split(';')
-    		for c in cmds:
-    			cs = c.split(' ')
-    			if len(cs) == 2:  # should be either AUTH or LOGOUT
-    				if cs[0] == "AUTH":
-    					# Reading our secret
-    					password = self.authenticate()
-    					if cs[1] == password:
-    						with self.token_lock:
-    							token = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
-    							expiration_time = datetime.now() + timedelta(minutes=self.expiration_minutes)
-    							# Set token expiration time
-    							self.tokens[token] = expiration_time
-    						self.serverSocket.sendto(encrypt_value(encryption_key,token).encode("utf-8"), addr)
-    				elif cs[0] == "LOGOUT":
-    					with self.token_lock: # our lock implemented
-    						token = cs[1]
-    						if self.tokens.get(token): # using get to prevent keyerrors
-    							del self.tokens[token]
-    				else:  # unknown command
-    					self.serverSocket.sendto(encrypt_value(encryption_key,"Invalid Command\n").encode("utf-8"), addr)
-    			elif c[0] in self.prot_cmds:
-    				with self.token_lock:
-    					authenticate_token = any (token in self.tokens and datetime.now() <= self.tokens[token] for token in cmd[1:]) #check if token is valid and not expired
-    					if authenticate_token: #If token is true, check if command is one of the prot_cmds and set the self.deg value
-    						if c == "SET_DEGF":
-    							self.deg = "F"
-    						elif c == "SET_DEGC":
-    							self.deg = "C"
-    						elif c == "SET_DEGK":
-    							self.deg = "K"
-    						elif c == "GET_TEMP":
-    							self.serverSocket.sendto(encrypt_value(encryption_key,"{}\n".format(self.getTemperature())).encode("utf-8"), addr)
-    						elif c == "UPDATE_TEMP":
-    							self.updateTemperature()
-    						elif c:
-    							self.serverSocket.sendto(encrypt_value(encryption_key,"Invalid Command\n").encode("utf-8"), addr)
-    					else:
-    						self.serverSocket.sendto(encrypt_value(encryption_key, "Authentication Required\n").encode("utf-8"), addr)		
-    			else:
-    				self.serverSocket.sendto(encrypt_value(encryption_key, "Invalid Command\n").encode("utf-8"), addr)
+        cmds = msg.split(';')
+        for c in cmds:
+            cs = c.split(' ')
+            if len(cs) == 2:  # should be either AUTH or LOGOUT
+                if cs[0] == "AUTH":
+                    # Reading our secret
+                    password = self.authenticate()
+                    if cs[1] == password:
+                        with self.token_lock:
+                            token = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+                            expiration_time = datetime.now() + timedelta(minutes=self.expiration_minutes)
+                            # Set token expiration time
+                            self.tokens[token] = expiration_time
+                        self.serverSocket.sendto(encrypt_value(encryption_key,token).encode("utf-8"), addr)
+                elif cs[0] == "LOGOUT":
+                    with self.token_lock: # our lock implemented
+                        token = cs[1]
+                        if self.tokens.get(token): # using get to prevent keyerrors
+                            del self.tokens[token]
+                else:  # unknown command
+                    self.serverSocket.sendto(encrypt_value(encryption_key,"Invalid Command\n").encode("utf-8"), addr)
+            elif c[0] in self.prot_cmds:
+                with self.token_lock:
+                    authenticate_token = any (token in self.tokens and datetime.now() <= self.tokens[token] for token in cmd[1:]) #check if token is valid and not expired
+                    if authenticate_token: #If token is true, check if command is one of the prot_cmds and set the self.deg value
+                        if c == "SET_DEGF":
+                            self.deg = "F"
+                        elif c == "SET_DEGC":
+                            self.deg = "C"
+                        elif c == "SET_DEGK":
+                            self.deg = "K"
+                        elif c == "GET_TEMP":
+                            self.serverSocket.sendto(encrypt_value(encryption_key,"{}\n".format(self.getTemperature())).encode("utf-8"), addr)
+                        elif c == "UPDATE_TEMP":
+                            self.updateTemperature()
+                        elif c:
+                            self.serverSocket.sendto(encrypt_value(encryption_key,"Invalid Command\n").encode("utf-8"), addr)
+                    else:
+                        self.serverSocket.sendto(encrypt_value(encryption_key, "Authentication Required\n").encode("utf-8"), addr)		
+            else:
+                self.serverSocket.sendto(encrypt_value(encryption_key, "Invalid Command\n").encode("utf-8"), addr)
 
     def run(self) : #the running function
         while True : 
