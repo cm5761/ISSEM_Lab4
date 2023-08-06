@@ -26,8 +26,8 @@ class SimpleNetworkClient :
         self.infToken = None
         self.incToken = None
 
-        self.ani = animation.FuncAnimation(self.fig, self.updateInfTemp, interval=500)
-        self.ani2 = animation.FuncAnimation(self.fig, self.updateIncTemp, interval=500)
+        self.ani = animation.FuncAnimation(self.fig, self.updateInfTemp, interval=500, save_count=30)
+        self.ani2 = animation.FuncAnimation(self.fig, self.updateIncTemp, interval=500, save_count=30)
 
     def updateTime(self) :
         now = time.time()
