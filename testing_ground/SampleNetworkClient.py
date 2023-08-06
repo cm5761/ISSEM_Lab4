@@ -4,9 +4,31 @@ import time
 import math
 import socket
 
+from functools import wraps
+
 #changes:
 # switched to TCP from UDP in preparation for TLS
-# 
+# rate limits
+
+RATE_LIMIT = 100 #per second
+
+# we provide a wrapper around functions that contact the server to limit them to maximum RATE_MINUTE calls per second
+def rate_limited(max_per_second):
+    min_interval = 1.0 / float(max_per_second)
+    def decorate(func):
+        last_time_called = [0.0]
+        @wraps(func)
+        def rate_limited_function(*args, **kwargs):
+            elapsed = time.perf_counter()- last_time_called[0]
+            left_to_wait = min_interval - elapsed
+            if left_to_wait > 0:
+                time.sleep(left_to_wait)
+            ret = func(*args, **kwargs)
+            last_time_called[0] = time.perf_counter()
+            return ret
+        return rate_limited_function
+    return decorate
+
 class SimpleNetworkClient :
     def __init__(self, port1, port2) :
         self.fig, self.ax = plt.subplots()
@@ -40,6 +62,7 @@ class SimpleNetworkClient :
             plt.xticks(range(30), self.times,rotation = 45)
             plt.title(time.strftime("%A, %Y-%m-%d", time.localtime(now)))
 
+    @rate_limited(RATE_LIMIT)
     def getTemperatureFromPort(self, p, tok) :
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect(("127.0.0.1", p))
@@ -48,6 +71,7 @@ class SimpleNetworkClient :
         m = msg.decode("utf-8")
         return (float(m))
 
+    @rate_limited(RATE_LIMIT)
     def authenticate(self, p, pw) :
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect(("127.0.0.1", p))
