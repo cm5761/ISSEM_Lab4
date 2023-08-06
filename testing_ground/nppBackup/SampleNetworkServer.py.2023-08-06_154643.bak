@@ -23,7 +23,6 @@ from run_vault import get_stored_token
 # switched UDP to TCP
 # random fix
 # DOS/DOS rate fix
-# hashicorp vault for token
 
 MAX_REQUESTS_PER_SECOND = 100
 MAX_IPS = 10

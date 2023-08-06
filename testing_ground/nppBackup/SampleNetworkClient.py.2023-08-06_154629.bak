@@ -13,7 +13,6 @@ from run_vault import create_vault_client
 #changes:
 # switched to TCP from UDP in preparation for TLS
 # rate limits
-# hashicorp vault for token
 
 RATE_LIMIT = 100 #per second
 
