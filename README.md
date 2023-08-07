@@ -15,7 +15,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | Vulnerability in the OS library   | Content Cell  | Open  |  1 |
 | socket.recfrom blocks until data is received  | Content Cell  | Open  | 2 |
 | Init Declarations and Initializations   | Content Cell  | Open  |  3 |
-| Error Handling   | Content Cell  | Open  |  6 |
+| Error Handling   | Alon Hillel-Tuch  | Patched  |  6 |
 | -------------  | ------------- | ------------- | ------------- | 
 | <ins>**SampleNetworkServer.py**</ins> 
 | -------------  | ------------- | ------------- | ------------- | 
@@ -25,7 +25,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | DDoS/Dos counter/rate limiter (SampleNetworkServer.py)  |  Alon Hillel-Tuch   | Patched  | ------------- |
 | Input Validation  | Copeland Myrie  | Open  |  4 |
 | Access Controls  | Copeland Myrie | Open  | 5 |
-| Error Handling   | Content Cell  | Open  |  6 |
+| Error Handling   | Alon Hillel-Tuch | Patched  |  6 |
 | Token Storage  | Content Cell  | Open  |  7 |
 | Token Usage  | Content Cell  | Open  |  8 |
 | Timing Attack  | Content Cell  | Open  |  9 |
