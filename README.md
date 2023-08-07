@@ -32,6 +32,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | Poor Randomness  | Alon Hillel-Tuch  | Patched  |  10 |
 | -------------  | ------------- | ------------- | ------------- |
 
+LACK OF ERROR LOGGING!
 
 Status types:
 [Open, Patched, Closed]
