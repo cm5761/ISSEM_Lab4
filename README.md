@@ -16,7 +16,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | socket.recfrom blocks until data is received  | Content Cell  | Open  | 2 |
 | Init Declarations and Initializations   | Content Cell  | Open  |  3 |
 | Error Handling   | Alon Hillel-Tuch  | Patched  |  6 |
-| Temperature Management   | Copeland Myrie |  Content Cell  |  11 |
+| Temperature Management   | Copeland Myrie |  Open |  11 |
 | -------------  | ------------- | ------------- | ------------- | 
 | <ins>**SampleNetworkServer.py**</ins> 
 | -------------  | ------------- | ------------- | ------------- | 
@@ -31,7 +31,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | Token Usage  | Content Cell  | Open  |  8 |
 | Timing Attack  | Content Cell  | Open  |  9 |
 | Poor Randomness  | Alon Hillel-Tuch  | Patched  |  10 |
-| Temperature Management   | Copeland Myrie |  Content Cell  |  11 |
+| Temperature Management   | Copeland Myrie |  Open  |  11 |
 | -------------  | ------------- | ------------- | ------------- |
 
 LACK OF ERROR LOGGING!
