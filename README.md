@@ -16,6 +16,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | socket.recfrom blocks until data is received  | Content Cell  | Open  | 2 |
 | Init Declarations and Initializations   | Content Cell  | Open  |  3 |
 | Error Handling   | Alon Hillel-Tuch  | Patched  |  6 |
+| Temperature Management   | Copeland Myrie |  Content Cell  |  11 |
 | -------------  | ------------- | ------------- | ------------- | 
 | <ins>**SampleNetworkServer.py**</ins> 
 | -------------  | ------------- | ------------- | ------------- | 
@@ -30,6 +31,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | Token Usage  | Content Cell  | Open  |  8 |
 | Timing Attack  | Content Cell  | Open  |  9 |
 | Poor Randomness  | Alon Hillel-Tuch  | Patched  |  10 |
+| Temperature Management   | Copeland Myrie |  Content Cell  |  11 |
 | -------------  | ------------- | ------------- | ------------- |
 
 LACK OF ERROR LOGGING!
@@ -49,7 +51,7 @@ Notes:
 8. The method uses a simple token-based authentication system to authenticate clients. While this can provide some level of security, it may not be sufficient for sensitive applications.
 9. The processCommands() method includes an "AUTH" command that allows clients to authenticate by sending a password. However, the password is compared to the value returned by the authenticate() method using the == operator, which can be vulnerable to timing attacks. A more secure approach would be to use a constant-time comparison function, such as hmac.compare_digest(), to compare the password values.
 10. The random.choice() module is not suitable for generating secure random values, as it uses a deterministic algorithm that can be predicted by an attacker. A more secure approach would be to use the secrets module, which provides functions for generating cryptographically secure random values.
-
+11. There is no validation that the set temperature commands are with acceptable parameters, we can deliberately freeze or overheat the infant. 
 
 Stylistic Concerns:
 The code uses a lot of 'magic numbers' that is, non-descript constants within the code such as 30,500, etc. They should be named constants instead and define the constants clearly up top.
