@@ -19,6 +19,8 @@ from functools import wraps
 from run_vault import get_stored_token
 from run_vault import create_vault_client
 
+import ssl
+
 # Vulnerability 1 rate limiting global constant
 RATE_LIMIT = 100  # per second
 
@@ -84,9 +86,13 @@ class SimpleNetworkClient:
     def getTemperatureFromPort(self, p, tok):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect(("127.0.0.1", p))
-                s.sendall(b"%s;GET_TEMP" % tok)
-                msg = s.recv(1024)
+                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                context.check_hostname = False  # Disable hostname verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
+                context.verify_mode = ssl.CERT_NONE  # Disable certificate verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
+                ssl_socket = context.wrap_socket(s, server_hostname="127.0.0.1")
+                ssl_socket.connect(("127.0.0.1", p))
+                ssl_socket.sendall(b"%s;GET_TEMP" % tok)
+                msg = ssl_socket.recv(1024)
             m = msg.decode("utf-8")
             try:
                 temperature = float(m)
@@ -102,9 +108,13 @@ class SimpleNetworkClient:
     def authenticate(self, p, pw):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect(("127.0.0.1", p))
-                s.sendall(b"AUTH %s" % pw)
-                msg = s.recv(1024)
+                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                context.check_hostname = False  # Disable hostname verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
+                context.verify_mode = ssl.CERT_NONE  # Disable certificate verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
+                ssl_socket = context.wrap_socket(s, server_hostname="127.0.0.1")
+                ssl_socket.connect(("127.0.0.1", p))
+                ssl_socket.sendall(b"AUTH %s" % pw)
+                msg = ssl_socket.recv(1024)
             return msg.strip()
         except socket.error as e:
             print("Socket error:", e)

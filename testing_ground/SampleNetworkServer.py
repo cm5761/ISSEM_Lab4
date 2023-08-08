@@ -19,23 +19,23 @@ import hvac
 from run_vault import create_vault_client
 from run_vault import get_stored_token
 
+import ssl
+
 # changes:
 # switched UDP to TCP
-# random fix Vulnerability 4
-# DOS/DOS rate fix Vulnerability 1/2
-# hashicorp vault for token
-# error handling Vulnerability 3
+# random fix
+# DOS/DOS rate fix
 
-# Vulnerability 1 global constants
 MAX_REQUESTS_PER_SECOND = 100
 MAX_IPS = 10
 
-class SmartNetworkThermometer(threading.Thread):
+
+class SmartNetworkThermometer (threading.Thread) :
     open_cmds = ["AUTH", "LOGOUT"]
     prot_cmds = ["SET_DEGF", "SET_DEGC", "SET_DEGK", "GET_TEMP", "UPDATE_TEMP"]
 
-    def __init__(self, source, updatePeriod, port):
-        threading.Thread.__init__(self, daemon=True)
+    def __init__ (self, source, updatePeriod, port) :
+        threading.Thread.__init__(self, daemon = True) 
         #set daemon to be true, so it doesn't block program from exiting
         self.source = source
         self.updatePeriod = updatePeriod
@@ -43,119 +43,114 @@ class SmartNetworkThermometer(threading.Thread):
         self.updateTemperature()
         self.tokens = []
 
-        self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # switched to TCP in preparation for TLS
+        # After creating the server socket
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.load_cert_chain(certfile='server-cert.pem', keyfile='server-key.pem')
+
+        self.serverSocket = context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         self.serverSocket.bind(("127.0.0.1", port))
         self.serverSocket.listen(5)  # Listen for incoming connections
 
-        self.deg = "K"
+        
 
-        # Vulnerability 1 Rate limiter attributes (for DDOS and DOS attacks)
+        self.deg = "K"
+        
+        
+        # Rate limiter attributes (for DDOS and DOS attacks)
         self.max_requests_per_second = MAX_REQUESTS_PER_SECOND
         self.max_ips = MAX_IPS
         self.ip_request_times = {}
-        self.ip_locks = {}
-
+        self.ip_locks = {}        
+        
         # Set up the Vault client
         self.vault_client = create_vault_client()
 
-    # Vulnerability 1 rate limiting function
+        
     def is_rate_limited(self, ip):
         if ip not in self.ip_request_times:
             self.ip_request_times[ip] = deque(maxlen=self.max_requests_per_second)
             self.ip_locks[ip] = Lock()
-
+            
         with self.ip_locks[ip]:
             request_times = self.ip_request_times[ip]
             current_time = time.time()
             while request_times and current_time - request_times[0] > 1:
                 request_times.popleft()
-
+                
             if len(request_times) >= self.max_requests_per_second:
                 return True
-
+            
             request_times.append(current_time)
             return False
-
-    def setSource(self, source):
+            
+    def setSource(self, source) :
         self.source = source
 
-    def setUpdatePeriod(self, updatePeriod):
-        self.updatePeriod = updatePeriod
+    def setUpdatePeriod(self, updatePeriod) :
+        self.updatePeriod = updatePeriod 
 
-    def setDegreeUnit(self, s):
+    def setDegreeUnit(self, s) :
         self.deg = s
-        if self.deg not in ["F", "K", "C"]:
+        if self.deg not in ["F", "K", "C"] :
             self.deg = "K"
 
-    def updateTemperature(self):
+    def updateTemperature(self) :
         self.curTemperature = self.source.getTemperature()
 
-    def getTemperature(self):
-        if self.deg == "C":
+    def getTemperature(self) :
+        if self.deg == "C" :
             return self.curTemperature - 273
-        if self.deg == "F":
+        if self.deg == "F" :
             return (self.curTemperature - 273) * 9 / 5 + 32
 
         return self.curTemperature
 
-    def processCommands(self, msg, clientSocket):
+    def processCommands(self, msg, clientSocket) :
         cmds = msg.split(';')
-        for c in cmds:
+        for c in cmds :
             cs = c.split(' ')
-            if len(cs) == 2:  # should be either AUTH or LOGOUT
+            if len(cs) == 2 : #should be either AUTH or LOGOUT
                 if cs[0] == "AUTH":
-                    try:  # Vulnerability 3 error handling: Handle errors during AUTH processing
-                        if cs[1] == get_stored_token(self.vault_client):
-                            # Vulnerability 4, fixed randomness
-                            self.tokens.append(''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16)))
-                            clientSocket.send(self.tokens[-1].encode("utf-8"))
-                        else:
-                            clientSocket.send(b"Bad Token\n")
-                    except:
-                        clientSocket.send(b"Error processing AUTH\n")
+                    if cs[1] == get_stored_token(self.vault_client) :
+                        self.tokens.append(''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16)))
+                        clientSocket.send(self.tokens[-1].encode("utf-8"))
+                        #print (self.tokens[-1])
                 elif cs[0] == "LOGOUT":
-                    try:  # Vulnerability 3 error handling: Handle errors during LOGOUT processing
-                        if cs[1] in self.tokens:
-                            self.tokens.remove(cs[1])
-                    except:
-                        clientSocket.send(b"Error processing LOGOUT\n")
-                else:
+                    if cs[1] in self.tokens :
+                        self.tokens.remove(cs[1])
+                else : #unknown command
                     clientSocket.send(b"Invalid Command\n")
-            elif c == "SET_DEGF":
+            elif c == "SET_DEGF" :
                 self.deg = "F"
-            elif c == "SET_DEGC":
+            elif c == "SET_DEGC" :
                 self.deg = "C"
-            elif c == "SET_DEGK":
+            elif c == "SET_DEGK" :
                 self.deg = "K"
-            elif c == "GET_TEMP":
-                try:  # Vulnerability 3 error handling: Handle errors during GET_TEMP processing
-                    clientSocket.send(b"%f\n" % self.getTemperature())
-                except:
-                    clientSocket.send(b"Error processing GET_TEMP\n")
-            elif c == "UPDATE_TEMP":
-                try:  # Vulnerability 3 error handling: Handle errors during UPDATE_TEMP processing
-                    self.updateTemperature()
-                except:
-                    clientSocket.send(b"Error processing UPDATE_TEMP\n")
-            elif c:
+            elif c == "GET_TEMP" :
+                clientSocket.send(b"%f\n" % self.getTemperature())
+            elif c == "UPDATE_TEMP" :
+                self.updateTemperature()
+            elif c :
                 clientSocket.send(b"Invalid Command\n")
+
+
 
     def run(self):  # the running function
         while True:
             try:
                 clientSocket, addr = self.serverSocket.accept()
                 ip, _ = addr
-
+                
                 if len(self.ip_request_times) > self.max_ips:
                     clientSocket.send(b"Too many IPs\n")
                     clientSocket.close()
                     continue
-                # Vulnerability 1 check if rate limited
+                
                 if self.is_rate_limited(ip):
                     clientSocket.send(b"Rate limited\n")
                     clientSocket.close()
                     continue
-
+                
                 msg = clientSocket.recv(1024).decode("utf-8").strip()
                 cmds = msg.split(' ')
                 if len(cmds) == 1:  # protected commands case
@@ -179,14 +174,19 @@ class SmartNetworkThermometer(threading.Thread):
 
                 clientSocket.close()
 
-            except IOError as e:
-                if e.errno == errno.EWOULDBLOCK:
+
+            except IOError as e :
+                if e.errno == errno.EWOULDBLOCK :
+                    #do nothing
                     pass
-                else:
-                    clientSocket.send(b"Error\n")
+                else :
+                    #do nothing for now
+                    pass
+                msg = ""
 
             self.updateTemperature()
             time.sleep(self.updatePeriod)
+
 
 
 
@@ -210,6 +210,12 @@ class SimpleClient:
         self.ani = animation.FuncAnimation(self.fig, self.updateInfTemp, interval=500)
         self.ani2 = animation.FuncAnimation(self.fig, self.updateIncTemp, interval=500)
 
+        # SSL context for secure communication with disabled hostname and certificate verification
+        # ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
+        self.context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile='server-cert.pem')
+        self.context.check_hostname = False
+        self.context.verify_mode = ssl.CERT_NONE
+
     def updateTime(self):
         now = time.time()
         if math.floor(now) > math.floor(self.lastTime):
@@ -220,38 +226,33 @@ class SimpleClient:
             self.lastTime = now
             plt.xticks(range(30), self.times, rotation=45)
             plt.title(time.strftime("%A, %Y-%m-%d", time.localtime(now)))
+            
+    # new method encapsulating the secure communication logic
+    def secureUpdate(self, thermometer, port):
+        temperature = thermometer.getTemperature() - 273
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            with self.context.wrap_socket(s, server_hostname="127.0.0.1") as ssl_socket:
+                ssl_socket.connect(("127.0.0.1", port))
+                ssl_socket.sendall(str(temperature).encode("utf-8"))
 
     def updateInfTemp(self, frame):
         self.updateTime()
-        inf_temp = self.infTherm.getTemperature() - 273
+        self.secureUpdate(self.infTherm, 23456)
 
-        try:  # Vulnerability 3 error handling: Handle errors during updating infant temperature
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
-                clientSocket.connect(("127.0.0.1", 23456))
-                clientSocket.sendall(str(inf_temp).encode("utf-8"))
-        except Exception as e:
-            print("Error sending infant temperature:", e)
-
-        self.infTemps.append(inf_temp)
+        self.infTemps.append(self.infTherm.getTemperature() - 273)
         self.infTemps = self.infTemps[-30:]
         self.infLn.set_data(range(30), self.infTemps)
         return self.infLn,
 
     def updateIncTemp(self, frame):
         self.updateTime()
-        inc_temp = self.incTherm.getTemperature() - 273
+        self.secureUpdate(self.incTherm, 23457)
 
-        try:  # Vulnerability 3 error handling: Handle errors during updating incubator temperature
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
-                clientSocket.connect(("127.0.0.1", 23457))
-                clientSocket.sendall(str(inc_temp).encode("utf-8"))
-        except Exception as e:
-            print("Error sending incubator temperature:", e)
-
-        self.incTemps.append(inc_temp)
+        self.incTemps.append(self.incTherm.getTemperature() - 273)
         self.incTemps = self.incTemps[-30:]
         self.incLn.set_data(range(30), self.incTemps)
         return self.incLn,
+
 
 UPDATE_PERIOD = .05 #in seconds
 SIMULATION_STEP = .1 #in seconds
