@@ -11,7 +11,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | -------------  | ------------- | ------------- | ------------- |
 | DoS Counter/rate limiter (SampleNetworkClient.py)   |  Alon Hillel-Tuch   | patched  | ------------- |
 | No Protection from System Clock Manipulation   | Content Cell  | Open  | 12 |
-| TLS to secure NW communication   | Content Cell  | Open  | ------------- |
+| TLS to secure NW communication   | Alon Hillel-Tuch  | Patched  | ------------- |
 | Vulnerability in the OS library   | Content Cell  | Open  |  1 |
 | socket.recfrom blocks until data is received  | Content Cell  | Open  | 2 |
 | Init Declarations and Initializations   | Content Cell  | Open  |  3 |
@@ -21,7 +21,7 @@ Note: These are NEW vulnerabilities building on top of the patches already perfo
 | <ins>**SampleNetworkServer.py**</ins> 
 | -------------  | ------------- | ------------- | ------------- | 
 | socket.recfrom blocks until data is received  | Content Cell  | Open  | 2 |
-| TLS to secure NW communication   | Content Cell  | Open  | ------------- |
+| TLS to secure NW communication   | Alon Hillel-Tuch  | Patched  | ------------- |
 | Vulnerability in the OS library   | Content Cell  | Open  |  1 |
 | DDoS/Dos counter/rate limiter (SampleNetworkServer.py)  |  Alon Hillel-Tuch   | Patched  | ------------- |
 | Input Validation  | Copeland Myrie  | Open  |  4 |
