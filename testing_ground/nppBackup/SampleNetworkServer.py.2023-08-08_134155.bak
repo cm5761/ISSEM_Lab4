@@ -106,7 +106,6 @@ class SmartNetworkThermometer(threading.Thread):
                 if cs[0] == "AUTH":
                     try:  # Vulnerability 3 error handling: Handle errors during AUTH processing
                         if cs[1] == get_stored_token(self.vault_client):
-                            # Vulnerability 4, fixed randomness
                             self.tokens.append(''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16)))
                             clientSocket.send(self.tokens[-1].encode("utf-8"))
                         else:

@@ -21,10 +21,10 @@ from run_vault import get_stored_token
 
 # changes:
 # switched UDP to TCP
-# random fix Vulnerability 4
-# DOS/DOS rate fix Vulnerability 1/2
+# random fix
+# DOS/DOS rate fix
 # hashicorp vault for token
-# error handling Vulnerability 3
+# error handling
 
 # Vulnerability 1 global constants
 MAX_REQUESTS_PER_SECOND = 100
@@ -106,7 +106,6 @@ class SmartNetworkThermometer(threading.Thread):
                 if cs[0] == "AUTH":
                     try:  # Vulnerability 3 error handling: Handle errors during AUTH processing
                         if cs[1] == get_stored_token(self.vault_client):
-                            # Vulnerability 4, fixed randomness
                             self.tokens.append(''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16)))
                             clientSocket.send(self.tokens[-1].encode("utf-8"))
                         else:
