@@ -10,12 +10,25 @@ import os
 import errno
 
 import string
-
 from datetime import datetime, timedelta
 import secrets
+from collections import deque
+from threading import Lock
+import hvac
+
+from run_vault import create_vault_client
+from run_vault import get_stored_token
+
+import ssl
+
 # changes:
 # switched UDP to TCP
 # random fix
+# DOS/DOS rate fix
+
+MAX_REQUESTS_PER_SECOND = 100
+MAX_IPS = 10
+
 
 class SmartNetworkThermometer (threading.Thread) :
     open_cmds = ["AUTH", "LOGOUT"]
@@ -28,16 +41,45 @@ class SmartNetworkThermometer (threading.Thread) :
         self.updatePeriod = updatePeriod
         self.curTemperature = 0
         self.updateTemperature()
-        self.tokens = {}
-        self.expiration_minutes = 180 # modifiable as appropriate
+        self.tokens = []
+        self.expiration_minutes = 180 # Introduce expiration time for tokens generated
 
-        self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # switched to TCP in preparation for TLS
+        # After creating the server socket
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.load_cert_chain(certfile='server-cert.pem', keyfile='server-key.pem')
+
+        self.serverSocket = context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         self.serverSocket.bind(("127.0.0.1", port))
         self.serverSocket.listen(5)  # Listen for incoming connections
-
         self.deg = "K"
-        self.token_lock = threading.Lock() # Our threading lock for token access
+                
+        # Rate limiter attributes (for DDOS and DOS attacks)
+        self.max_requests_per_second = MAX_REQUESTS_PER_SECOND
+        self.max_ips = MAX_IPS
+        self.ip_request_times = {}
+        self.ip_locks = {}        
+        
+        # Set up the Vault client
+        self.vault_client = create_vault_client()
 
+        
+    def is_rate_limited(self, ip):
+        if ip not in self.ip_request_times:
+            self.ip_request_times[ip] = deque(maxlen=self.max_requests_per_second)
+            self.ip_locks[ip] = Lock()
+            
+        with self.ip_locks[ip]:
+            request_times = self.ip_request_times[ip]
+            current_time = time.time()
+            while request_times and current_time - request_times[0] > 1:
+                request_times.popleft()
+                
+            if len(request_times) >= self.max_requests_per_second:
+                return True
+            
+            request_times.append(current_time)
+            return False
+            
     def setSource(self, source) :
         self.source = source
 
@@ -66,69 +108,76 @@ class SmartNetworkThermometer (threading.Thread) :
             cs = c.split(' ')
             if len(cs) == 2 : #should be either AUTH or LOGOUT
                 if cs[0] == "AUTH":
-                    if cs[1] == "!Q#E%T&U8i6y4r2w" :
-                        with self.token_lock:
-                            token = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
-                            expiration_time = datetime.now() + timedelta(minutes=self.expiration_minutes)
-                            # Set token expiration time
-                            self.tokens[token] = expiration_time
-                        clientSocket.send(token.encode("utf-8"))
-                        #print (token)
+                    if cs[1] == get_stored_token(self.vault_client) :
+                        token = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+                        expiration_time = datetime.now() + timedelta(minutes=self.expiration_minutes)
+                        self.tokens[token] = expiration_time
+                        clientSocket.send(self.tokens[-1].encode("utf-8"))
+                        #print (self.tokens[-1])
                 elif cs[0] == "LOGOUT":
-                    with self.token_lock: # our lock implemented
-                        token = cs[1]
-                        if self.tokens.get(token): # using get to prevent keyerrors
-                            del self.tokens[token]
+                    if cs[1] in self.tokens :
+                        self.tokens.remove(cs[1])
                 else : #unknown command
                     clientSocket.send(b"Invalid Command\n")
             elif c[0] in self.prot_cmds:
-                with self.token_lock:
-                    authenticate_token = any (token in self.tokens and datetime.now() <= self.tokens[token] for token in c[1:]) #check if token is valid and not expired
-                    if authenticate_token: #If token is true, check if command is one of the prot_cmds and set the self.deg value
-                        if c == "SET_DEGF" :
-                            self.deg = "F"
-                        elif c == "SET_DEGC" :
-                            self.deg = "C"
-                        elif c == "SET_DEGK" :
-                            self.deg = "K"
-                        elif c == "GET_TEMP" :
-                            clientSocket.send(b"%f\n" % self.getTemperature())
-                        elif c == "UPDATE_TEMP" :
-                            self.updateTemperature()
-                        elif c :
-                            clientSocket.send(b"Invalid Command\n")
-                    else:
-                        clientSocket.send(b"Authentication Required\n")
+                authenticate_token = any (token in self.tokens and datetime.now() <= self.tokens[token] for token in c[1:]) #check if token is valid and not expired
+                if authenticate_token: #If token is true, check if command is one of the prot_cmds and set the self.deg value
+                    if c == "SET_DEGF" :
+                        self.deg = "F"
+                    elif c == "SET_DEGC" :
+                        self.deg = "C"
+                    elif c == "SET_DEGK" :
+                        self.deg = "K"
+                    elif c == "GET_TEMP" :
+                        clientSocket.send(b"%f\n" % self.getTemperature())
+                    elif c == "UPDATE_TEMP" :
+                        self.updateTemperature()
+                    elif c :
+                        clientSocket.send(b"Invalid Command\n")
+                else:
+                    clientSocket.send(b"Authentication Required\n")
             else:
-                clientSocket.send(b"Invalid Command\n")
+                clientSocket.send(b"Invalid Command\n")                    
 
-
-    def run(self) : #the running function
-        while True : 
-            try :
+    def run(self):  # the running function
+        while True:
+            try:
                 clientSocket, addr = self.serverSocket.accept()
+                ip, _ = addr
+                
+                if len(self.ip_request_times) > self.max_ips:
+                    clientSocket.send(b"Too many IPs\n")
+                    clientSocket.close()
+                    continue
+                
+                if self.is_rate_limited(ip):
+                    clientSocket.send(b"Rate limited\n")
+                    clientSocket.close()
+                    continue
+                
                 msg = clientSocket.recv(1024).decode("utf-8").strip()
                 cmds = msg.split(' ')
-                if len(cmds) == 1 : # protected commands case
+                if len(cmds) == 1:  # protected commands case
                     semi = msg.find(';')
-                    if semi != -1 : #if we found the semicolon
-                        #print (msg)
-                        if msg[:semi] in self.tokens : #if its a valid token
-                            self.processCommands(msg[semi+1:], clientSocket)
-                        else :
+                    if semi != -1:  # if we found the semicolon
+                        # print (msg)
+                        if msg[:semi] in self.tokens:  # if its a valid token
+                            self.processCommands(msg[semi + 1:], clientSocket)
+                        else:
                             clientSocket.send(b"Bad Token\n")
-                    else :
-                            clientSocket.send(b"Bad Command\n")
-                elif len(cmds) == 2 :
-                    if cmds[0] in self.open_cmds : #if its AUTH or LOGOUT
-                        self.processCommands(msg, clientSocket) 
-                    else :
+                    else:
+                        clientSocket.send(b"Bad Command\n")
+                elif len(cmds) == 2:
+                    if cmds[0] in self.open_cmds:  # if its AUTH or LOGOUT
+                        self.processCommands(msg, clientSocket)
+                    else:
                         clientSocket.send(b"Authenticate First\n")
-                else :
+                else:
                     # otherwise bad command
                     clientSocket.send(b"Bad Command\n")
-                    
-                clientSocket.close() 
+
+                clientSocket.close()
+
 
             except IOError as e :
                 if e.errno == errno.EWOULDBLOCK :
@@ -144,18 +193,20 @@ class SmartNetworkThermometer (threading.Thread) :
 
 
 
-class SimpleClient :
-    def __init__(self, therm1, therm2) :
+
+
+class SimpleClient:
+    def __init__(self, therm1, therm2):
         self.fig, self.ax = plt.subplots()
         now = time.time()
         self.lastTime = now
-        self.times = [time.strftime("%H:%M:%S", time.localtime(now-i)) for i in range(30, 0, -1)]
-        self.infTemps = [0]*30
-        self.incTemps = [0]*30
+        self.times = [time.strftime("%H:%M:%S", time.localtime(now - i)) for i in range(30, 0, -1)]
+        self.infTemps = [0] * 30
+        self.incTemps = [0] * 30
         self.infLn, = plt.plot(range(30), self.infTemps, label="Infant Temperature")
         self.incLn, = plt.plot(range(30), self.incTemps, label="Incubator Temperature")
         plt.xticks(range(30), self.times, rotation=45)
-        plt.ylim((20,50))
+        plt.ylim((20, 50))
         plt.legend(handles=[self.infLn, self.incLn])
         self.infTherm = therm1
         self.incTherm = therm2
@@ -163,45 +214,49 @@ class SimpleClient :
         self.ani = animation.FuncAnimation(self.fig, self.updateInfTemp, interval=500)
         self.ani2 = animation.FuncAnimation(self.fig, self.updateIncTemp, interval=500)
 
-    def updateTime(self) :
+        # SSL context for secure communication with disabled hostname and certificate verification
+        # ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
+        self.context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile='server-cert.pem')
+        self.context.check_hostname = False
+        self.context.verify_mode = ssl.CERT_NONE
+
+    def updateTime(self):
         now = time.time()
-        if math.floor(now) > math.floor(self.lastTime) :
+        if math.floor(now) > math.floor(self.lastTime):
             t = time.strftime("%H:%M:%S", time.localtime(now))
             self.times.append(t)
-            #last 30 seconds of of data
+            # last 30 seconds of data
             self.times = self.times[-30:]
             self.lastTime = now
-            plt.xticks(range(30), self.times,rotation = 45)
+            plt.xticks(range(30), self.times, rotation=45)
             plt.title(time.strftime("%A, %Y-%m-%d", time.localtime(now)))
-
+            
+    # new method encapsulating the secure communication logic
+    def secureUpdate(self, thermometer, port):
+        temperature = thermometer.getTemperature() - 273
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            with self.context.wrap_socket(s, server_hostname="127.0.0.1") as ssl_socket:
+                ssl_socket.connect(("127.0.0.1", port))
+                ssl_socket.sendall(str(temperature).encode("utf-8"))
 
     def updateInfTemp(self, frame):
         self.updateTime()
-        inf_temp = self.infTherm.getTemperature() - 273
+        self.secureUpdate(self.infTherm, 23456)
 
-        # Connect to the server using TCP and send the temperature update
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
-            clientSocket.connect(("127.0.0.1", 23456))
-            clientSocket.sendall(str(inf_temp).encode("utf-8"))
-
-        self.infTemps.append(inf_temp)
+        self.infTemps.append(self.infTherm.getTemperature() - 273)
         self.infTemps = self.infTemps[-30:]
         self.infLn.set_data(range(30), self.infTemps)
         return self.infLn,
 
     def updateIncTemp(self, frame):
         self.updateTime()
-        inc_temp = self.incTherm.getTemperature() - 273
+        self.secureUpdate(self.incTherm, 23457)
 
-        # Connect to the server using TCP and send the temperature update
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
-            clientSocket.connect(("127.0.0.1", 23457))
-            clientSocket.sendall(str(inc_temp).encode("utf-8"))
-
-        self.incTemps.append(inc_temp)
+        self.incTemps.append(self.incTherm.getTemperature() - 273)
         self.incTemps = self.incTemps[-30:]
         self.incLn.set_data(range(30), self.incTemps)
         return self.incLn,
+
 
 UPDATE_PERIOD = .05 #in seconds
 SIMULATION_STEP = .1 #in seconds
