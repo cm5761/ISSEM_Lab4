@@ -118,6 +118,10 @@ class SimpleNetworkClient:
 
                 if msg.startswith(b"TOKEN"):
                     self.token = msg.split(b" ")[1].decode("utf-8")
+                    if p == self.infPort:
+                        self.infToken = self.token
+                    elif p == self.incPort:
+                        self.incToken = self.token
                     print("Authentication Success!")
                 else:
                     print("Authentication Failed!")                                       
