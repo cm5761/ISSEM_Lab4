@@ -1,11 +1,3 @@
-# switched to TCP from UDP in preparation for TLS
-# rate limits
-# hashicorp vault for token
-# error handling for server results and socket
-
-"""
-modified the getTemperatureFromPort and authenticate methods to return None on error conditions. This helps in handling errors gracefully and prevents crashes due to unexpected exceptions."""
-
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
@@ -23,7 +15,7 @@ import ssl
 
 # Vulnerability 1 rate limiting global constant
 RATE_LIMIT = 100  # per second
-TOKEN_EXPIRATION = 5 # Vulnerability 4 - input validation: 7200/60 = 120 minutes
+TOKEN_EXPIRATION = 7200 # Vulnerability 4 - input validation: 7200/60 = 120 minutes
 
 # Vulnerability 1 we provide a wrapper around functions that contact the server to limit them to maximum RATE_MINUTE calls per second
 def rate_limited(max_per_second):
