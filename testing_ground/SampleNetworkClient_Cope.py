@@ -150,7 +150,7 @@ class SimpleNetworkClient:
             temperature = self.getTemperatureFromPort(self.infPort, self.infToken["token"])
 
             if temperature is not None and isinstance(temperature, float):
-                if 34 <= temperature <= 38:
+                if 34 <= temperature <= 38: #Infant temp range in Celcius
                     self.infTemps.append(temperature - 273)
                 else: 
                     print("Temp is out of range:", temperature)
@@ -177,7 +177,7 @@ class SimpleNetworkClient:
             temperature = self.getTemperatureFromPort(self.incPort, self.incToken["token"])
 
             if temperature is not None and isinstance(temperature, float):
-                if 15.6 <= temperature <= 39:
+                if 15.6 <= temperature <= 39: #Incubator air temp range in Celcius
                     self.incTemps.append(temperature - 273)
                 else: 
                     print("Temp is out of range:", temperature)
