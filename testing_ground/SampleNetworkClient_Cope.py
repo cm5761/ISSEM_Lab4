@@ -150,7 +150,10 @@ class SimpleNetworkClient:
             temperature = self.getTemperatureFromPort(self.infPort, self.infToken["token"])
 
             if temperature is not None and isinstance(temperature, float):
-                self.infTemps.append(temperature - 273)
+                if 93.2 <= temperature <= 100.4:
+                    self.infTemps.append(temperature - 273)
+                else: 
+                    print("Temp is out of range:", temperature)
             else:
                 print("Discarded non-float temperature:", temperature)  # Vulnerability 3 error handling for rate limiting
 
@@ -176,7 +179,10 @@ class SimpleNetworkClient:
             temperature = self.getTemperatureFromPort(self.incPort, self.incToken["token"])
 
             if temperature is not None and isinstance(temperature, float):
-                self.incTemps.append(temperature - 273)
+                if 60 <= temperature <= 102.2:
+                    self.incTemps.append(temperature - 273)
+                else: 
+                    print("Temp is out of range:", temperature)
             else:
                 print("Discarded non-float temperature:", temperature)  # Vulnerability 3 error handling for rate limiting
 
