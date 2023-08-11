@@ -1,11 +1,3 @@
-# switched to TCP from UDP in preparation for TLS
-# rate limits
-# hashicorp vault for token
-# error handling for server results and socket
-
-"""
-modified the getTemperatureFromPort and authenticate methods to return None on error conditions. This helps in handling errors gracefully and prevents crashes due to unexpected exceptions."""
-
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
@@ -23,6 +15,7 @@ import ssl
 
 # Vulnerability 1 rate limiting global constant
 RATE_LIMIT = 100  # per second
+TOKEN_EXPIRATION = 7200 # Vulnerability 4 - input validation: 7200/60 = 120 minutes
 
 # Vulnerability 1 we provide a wrapper around functions that contact the server to limit them to maximum RATE_MINUTE calls per second
 def rate_limited(max_per_second):
@@ -61,15 +54,21 @@ class SimpleNetworkClient:
         plt.legend(handles=[self.infLn, self.incLn])
         self.infPort = port1
         self.incPort = port2
+        
+        # Vulnerability 5 access controls
+        self.infToken = {"token": None, "expiration_time": 0}
+        self.incToken = {"token": None, "expiration_time": 0}
 
-        self.infToken = None
-        self.incToken = None
 
         self.ani = animation.FuncAnimation(self.fig, self.updateInfTemp, interval=500)
         self.ani2 = animation.FuncAnimation(self.fig, self.updateIncTemp, interval=500)
 
         # Set up the Vault client
         self.vault_client = create_vault_client()
+    
+    # Vulnerability 5 access controls
+    def is_token_valid(self, token):
+        return token["expiration_time"] >= time.time()
 
     def updateTime(self):
         now = time.time()
@@ -91,72 +90,95 @@ class SimpleNetworkClient:
                 context.verify_mode = ssl.CERT_NONE  # Disable certificate verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
                 ssl_socket = context.wrap_socket(s, server_hostname="127.0.0.1")
                 ssl_socket.connect(("127.0.0.1", p))
-                ssl_socket.sendall(b"%s;GET_TEMP" % tok)
+                ssl_socket.sendall(b"%s;GET_TEMP" % tok.encode("utf-8"))
                 msg = ssl_socket.recv(1024)
             m = msg.decode("utf-8")
+            if m.startswith("Bad Token"):
+                print("Received 'Bad Token' response, removing token and re-authenticating.")
+                self.infToken["token"] = None
+                return None
             try:
                 temperature = float(m)
                 return temperature
             except ValueError:
                 print("Received non-numeric value:", m)
                 return None  # Vulnerability 3 error handling: Return None on error
+            except socket.error as e:
+                print("Error receiving response from server:", e) #inside loop insight for vulnerability 3
+                return None
         except socket.error as e:
             print("Socket error:", e)
             return None  # Vulnerability 3 error handling: Return None on error
+
+
 
     @rate_limited(RATE_LIMIT)
     def authenticate(self, p, pw):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-                context.check_hostname = False  # Disable hostname verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
-                context.verify_mode = ssl.CERT_NONE  # Disable certificate verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
+                context.check_hostname = False # Disable hostname verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
+                context.verify_mode = ssl.CERT_NONE # Disable certificate verification - ONLY BECAUSE WE DO NOT HAVE A SIGNED CERT TO USE
                 ssl_socket = context.wrap_socket(s, server_hostname="127.0.0.1")
                 ssl_socket.connect(("127.0.0.1", p))
                 ssl_socket.sendall(b"AUTH %s" % pw)
-                msg = ssl_socket.recv(1024)
-
-                if msg.startswith(b"TOKEN"):
-                    self.token = msg.split(b" ")[1].decode("utf-8")
-                    if p == self.infPort:
-                        self.infToken = self.token
-                    elif p == self.incPort:
-                        self.incToken = self.token
-                    print("Authentication Success!")
-                else:
-                    print("Authentication Failed!")                                       
-            #return msg.strip()
+                msg = ssl_socket.recv(1024).strip()
+                token = msg.decode("utf-8")
+                if token == "Bad Token":
+                    print("Received 'Bad Token' response during authentication.")
+                    return None
+                # Vulnerability 5 access controls - we allow the TOKEN_EXPIRATION to be modified in this code, but Server ALWAYS CHECKS it is <= it's own set expiration time
+                expiration_time = time.time() + TOKEN_EXPIRATION
+                return {"token": token, "expiration_time": expiration_time}
         except socket.error as e:
             print("Socket error:", e)
-            return None  # Vulnerability 3 error handling: Return None on error
+            return None # Vulnerability 3 error handling: Return None on error
 
     def updateInfTemp(self, frame):
-        self.updateTime()
-        if self.infToken is None:  # not yet authenticated
-            self.infToken = self.authenticate(self.infPort, get_stored_token(self.vault_client).encode('utf-8'))
+        self.updateTime()  # Vulnerability 5 access controls
 
-        temperature = self.getTemperatureFromPort(self.infPort, self.infToken)
-        
-        if temperature is not None and isinstance(temperature, float):
-            self.infTemps.append(temperature - 273)
-        else:
-            print("Discarded non-float temperature:", temperature) # Vulnerability 3 error handling for rate limiting
+        # Check if token is None or expired
+        if self.infToken["token"] is None or not self.is_token_valid(self.infToken):
+            new_token = self.authenticate(self.infPort, get_stored_token(self.vault_client).encode('utf-8'))
+            if new_token is not None:
+                self.infToken = new_token
+            else:
+                return self.infLn,  # Return early if token retrieval fails
+
+        # Vulnerability 5 access controls
+        if self.infToken["token"] is not None and self.is_token_valid(self.infToken):
+            temperature = self.getTemperatureFromPort(self.infPort, self.infToken["token"])
+
+            if temperature is not None and isinstance(temperature, float):
+                self.infTemps.append(temperature - 273)
+            else:
+                print("Discarded non-float temperature:", temperature)  # Vulnerability 3 error handling for rate limiting
 
         self.infTemps = self.infTemps[-30:]
         self.infLn.set_data(range(30), self.infTemps)
         return self.infLn,
 
-    def updateIncTemp(self, frame):
-        self.updateTime()
-        if self.incToken is None:  # not yet authenticated
-            self.incToken = self.authenticate(self.incPort, get_stored_token(self.vault_client).encode('utf-8'))
 
-        temperature = self.getTemperatureFromPort(self.incPort, self.incToken)
-        
-        if temperature is not None and isinstance(temperature, float):
-            self.incTemps.append(temperature - 273)
-        else:
-            print("Discarded non-float temperature:", temperature) # Vulnerability 3 error handling for rate limiting
+
+    def updateIncTemp(self, frame):
+        self.updateTime()  # Vulnerability 5 access controls
+
+        # Check if token is None or expired
+        if self.incToken["token"] is None or not self.is_token_valid(self.incToken):
+            new_token = self.authenticate(self.incPort, get_stored_token(self.vault_client).encode('utf-8'))
+            if new_token is not None:
+                self.incToken = new_token
+            else:
+                return self.incLn,  # Return early if token retrieval fails
+
+        # Vulnerability 5 access controls
+        if self.incToken["token"] is not None and self.is_token_valid(self.incToken):
+            temperature = self.getTemperatureFromPort(self.incPort, self.incToken["token"])
+
+            if temperature is not None and isinstance(temperature, float):
+                self.incTemps.append(temperature - 273)
+            else:
+                print("Discarded non-float temperature:", temperature)  # Vulnerability 3 error handling for rate limiting
 
         self.incTemps = self.incTemps[-30:]
         self.incLn.set_data(range(30), self.incTemps)
