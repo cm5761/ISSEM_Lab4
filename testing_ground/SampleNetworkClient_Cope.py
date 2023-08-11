@@ -153,9 +153,9 @@ class SimpleNetworkClient:
                 if 34 <= temperature <= 38: #Infant temp range in Celcius
                     self.infTemps.append(temperature - 273)
                 else: 
-                    print("Temp is out of range:", temperature)
+                    print("Temp is out of range (Inf):", temperature)
             else:
-                print("Discarded non-float temperature (Inf):", temperature)  # Vulnerability 3 error handling for rate limiting
+                print("Discarded non-float temperature:", temperature)  # Vulnerability 3 error handling for rate limiting
 
         self.infTemps = self.infTemps[-30:]
         self.infLn.set_data(range(30), self.infTemps)
