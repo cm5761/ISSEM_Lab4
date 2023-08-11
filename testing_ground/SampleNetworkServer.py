@@ -116,7 +116,13 @@ class SmartNetworkThermometer (threading.Thread) :
                 if c == "GET_TEMP":
                     clientSocket.send(b"%f\n" % self.getTemperature())
                 elif c == "UPDATE_TEMP":
-                    self.updateTemperature()
+                    self.updateTemperature()        
+                elif c == "SET_DEGF" :
+                    self.deg = "F"
+                elif c == "SET_DEGC" :
+                    self.deg = "C"
+                elif c == "SET_DEGK" :
+                    self.deg = "K"    
                 else:
                     clientSocket.send(b"Invalid Command\n")
             else:
