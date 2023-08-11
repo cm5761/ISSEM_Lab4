@@ -155,7 +155,7 @@ class SimpleNetworkClient:
                 else: 
                     print("Temp is out of range:", temperature)
             else:
-                print("Discarded non-float temperature:", temperature)  # Vulnerability 3 error handling for rate limiting
+                print("Discarded non-float temperature (Inf):", temperature)  # Vulnerability 3 error handling for rate limiting
 
         self.infTemps = self.infTemps[-30:]
         self.infLn.set_data(range(30), self.infTemps)
@@ -180,7 +180,7 @@ class SimpleNetworkClient:
                 if 15.6 <= temperature <= 39: #Incubator air temp range in Celcius
                     self.incTemps.append(temperature - 273)
                 else: 
-                    print("Temp is out of range:", temperature)
+                    print("Temp is out of range (Inc):", temperature)
             else:
                 print("Discarded non-float temperature:", temperature)  # Vulnerability 3 error handling for rate limiting
 
