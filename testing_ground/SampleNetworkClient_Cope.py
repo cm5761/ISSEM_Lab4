@@ -150,7 +150,7 @@ class SimpleNetworkClient:
             temperature = self.getTemperatureFromPort(self.infPort, self.infToken["token"])
 
             if temperature is not None and isinstance(temperature, float):
-                if 93.2 <= temperature <= 100.4:
+                if 34 <= temperature <= 38:
                     self.infTemps.append(temperature - 273)
                 else: 
                     print("Temp is out of range:", temperature)
@@ -160,8 +160,6 @@ class SimpleNetworkClient:
         self.infTemps = self.infTemps[-30:]
         self.infLn.set_data(range(30), self.infTemps)
         return self.infLn,
-
-
 
     def updateIncTemp(self, frame):
         self.updateTime()  # Vulnerability 5 access controls
@@ -179,7 +177,7 @@ class SimpleNetworkClient:
             temperature = self.getTemperatureFromPort(self.incPort, self.incToken["token"])
 
             if temperature is not None and isinstance(temperature, float):
-                if 60 <= temperature <= 102.2:
+                if 15.6 <= temperature <= 39:
                     self.incTemps.append(temperature - 273)
                 else: 
                     print("Temp is out of range:", temperature)
@@ -189,7 +187,6 @@ class SimpleNetworkClient:
         self.incTemps = self.incTemps[-30:]
         self.incLn.set_data(range(30), self.incTemps)
         return self.incLn,
-
 
 snc = SimpleNetworkClient(23456, 23457)
 
