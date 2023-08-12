@@ -150,6 +150,7 @@ class SimpleNetworkClient:
             temperature = self.getTemperatureFromPort(self.infPort, self.infToken["token"])
 
             if temperature is not None and isinstance(temperature, float):
+                # Vulnerability 6 Temperature Management
                 if 307 <= temperature <= 311: #Infant temp range in Kelvin
                     self.infTemps.append(temperature - 273)
                 else: 
@@ -177,6 +178,7 @@ class SimpleNetworkClient:
             temperature = self.getTemperatureFromPort(self.incPort, self.incToken["token"])
 
             if temperature is not None and isinstance(temperature, float):
+                # Vulnerability 6 Temperature Management
                 if 289 <= temperature <= 312: #Incubator air temp range in Kelvin
                     self.incTemps.append(temperature - 273)
                 else: 
