@@ -64,7 +64,7 @@ inc = infinc.Incubator(width = 1, depth=1, height = 1, temperature = 37 + 273, r
 incThermo = infinc.SmartThermometer(inc, UPDATE_PERIOD)
 incThermo.start() #start the thread
 
-incHeater = infinc.SmartHeater(powerOutput = 1500, setTemperature = 45 + 273, thermometer = incThermo, updatePeriod = UPDATE_PERIOD)
+incHeater = infinc.SmartHeater(powerOutput = 1500, setTemperature = 34 + 273, thermometer = incThermo, updatePeriod = UPDATE_PERIOD)
 inc.setHeater(incHeater)
 incHeater.start() #start the thread
 
