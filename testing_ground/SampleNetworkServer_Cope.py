@@ -10,7 +10,7 @@ import os
 import errno
 
 import string
-from datetime import datetime, timedelta
+
 import secrets
 from collections import deque
 from threading import Lock
@@ -28,6 +28,7 @@ import ssl
 
 MAX_REQUESTS_PER_SECOND = 100
 MAX_IPS = 10
+TOKEN_EXPIRATION = 7200 # Vulnerability 5 access controls 7200/60 = 120 minutes
 
 
 class SmartNetworkThermometer (threading.Thread) :
@@ -42,18 +43,21 @@ class SmartNetworkThermometer (threading.Thread) :
         self.curTemperature = 0
         self.updateTemperature()
         self.tokens = []
-        self.expiration_minutes = 180 # Introduce expiration time for tokens generated
 
-        # After creating the server socket
+        # After creating the server socket we setup SSL/TLS
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.load_cert_chain(certfile='server-cert.pem', keyfile='server-key.pem')
-
+        # over TCP not UDP
         self.serverSocket = context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         self.serverSocket.bind(("127.0.0.1", port))
         self.serverSocket.listen(5)  # Listen for incoming connections
+
+        
+
         self.deg = "K"
-                
-        # Rate limiter attributes (for DDOS and DOS attacks)
+        
+        
+        # # Vulnerability 1 Dos/DDoS Rate limiter attributes 
         self.max_requests_per_second = MAX_REQUESTS_PER_SECOND
         self.max_ips = MAX_IPS
         self.ip_request_times = {}
@@ -61,8 +65,8 @@ class SmartNetworkThermometer (threading.Thread) :
         
         # Set up the Vault client
         self.vault_client = create_vault_client()
-
         
+    # Vulnerability 5 access controls
     def is_rate_limited(self, ip):
         if ip not in self.ip_request_times:
             self.ip_request_times[ip] = deque(maxlen=self.max_requests_per_second)
@@ -71,15 +75,60 @@ class SmartNetworkThermometer (threading.Thread) :
         with self.ip_locks[ip]:
             request_times = self.ip_request_times[ip]
             current_time = time.time()
+            
+            # Remove request times older than 1 second
             while request_times and current_time - request_times[0] > 1:
                 request_times.popleft()
                 
+            # Check if the number of requests exceeds the limit
             if len(request_times) >= self.max_requests_per_second:
                 return True
             
-            request_times.append(current_time)
+            # Add the current request time to the deque
+            request_times.append(current_time)  # Missing line in your code
+            
             return False
             
+
+
+            
+    # Vulnerability 5 access controls
+    def generate_token(self):
+        # Vulnerability fixing random and using secrets instead
+        return ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+    
+    # Vulnerability 5 access controls
+    def is_token_valid(self, token):
+        for stored_token in self.tokens:
+            if stored_token["token"] == token and (time.time() - stored_token["creation_time"]) <= TOKEN_EXPIRATION:
+                return True
+        return False
+
+    # Vulnerability 5 access controls and Vulnerability 4 Input Validation
+    def process_protected_commands(self, msg, clientSocket, token):
+        if not self.is_token_valid(token):
+            clientSocket.send(b"Bad Token\n")
+            return
+
+        cmds = msg.split(';')
+        for c in cmds:
+            if c in self.prot_cmds:
+                if c == "GET_TEMP":
+                    clientSocket.send(b"%f\n" % self.getTemperature())
+                elif c == "UPDATE_TEMP":
+                    self.updateTemperature()        
+                elif c == "SET_DEGF" :
+                    self.deg = "F"
+                elif c == "SET_DEGC" :
+                    self.deg = "C"
+                elif c == "SET_DEGK" :
+                    self.deg = "K"    
+                else:
+                    clientSocket.send(b"Invalid Command\n")
+            else:
+                clientSocket.send(b"Invalid Command\n")
+
+                    
     def setSource(self, source) :
         self.source = source
 
@@ -102,96 +151,76 @@ class SmartNetworkThermometer (threading.Thread) :
 
         return self.curTemperature
 
-    def processCommands(self, msg, clientSocket) :
+    def processCommands(self, msg, clientSocket, ip):
         cmds = msg.split(';')
-        for c in cmds :
+        for c in cmds:
             cs = c.split(' ')
-            if len(cs) == 2 : #should be either AUTH or LOGOUT
+            if len(cs) == 2:
                 if cs[0] == "AUTH":
-                    if cs[1] == get_stored_token(self.vault_client) :
-                        token = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
-                        expiration_time = datetime.now() + timedelta(minutes=self.expiration_minutes)
-                        self.tokens[token] = expiration_time
-                        clientSocket.send(self.tokens[-1].encode("utf-8"))
-                        #print (self.tokens[-1])
+                    if cs[1] == get_stored_token(self.vault_client):
+                        new_token = self.generate_token()
+                        self.tokens.append({"token": new_token, "creation_time": time.time()})
+                        clientSocket.send(new_token.encode("utf-8"))
                 elif cs[0] == "LOGOUT":
-                    if cs[1] in self.tokens :
-                        self.tokens.remove(cs[1])
-                else : #unknown command
-                    clientSocket.send(b"Invalid Command\n")
-            elif c[0] in self.prot_cmds:
-                authenticate_token = any (token in self.tokens and datetime.now() <= self.tokens[token] for token in c[1:]) #check if token is valid and not expired
-                if authenticate_token: #If token is true, check if command is one of the prot_cmds and set the self.deg value
-                    if c == "SET_DEGF" :
-                        self.deg = "F"
-                    elif c == "SET_DEGC" :
-                        self.deg = "C"
-                    elif c == "SET_DEGK" :
-                        self.deg = "K"
-                    elif c == "GET_TEMP" :
-                        clientSocket.send(b"%f\n" % self.getTemperature())
-                    elif c == "UPDATE_TEMP" :
-                        self.updateTemperature()
-                    elif c :
-                        clientSocket.send(b"Invalid Command\n")
+                    if cs[1] in [token["token"] for token in self.tokens]:
+                        self.tokens = [token for token in self.tokens if token["token"] != cs[1]]
                 else:
-                    clientSocket.send(b"Authentication Required\n")
+                    clientSocket.send(b"Invalid Command\n")
             else:
-                clientSocket.send(b"Invalid Command\n")                    
+                clientSocket.send(b"Bad Command\n")
+                
+        # Remove expired tokens
+        current_time = time.time()
+        self.tokens = [token for token in self.tokens if current_time <= token["creation_time"] + TOKEN_EXPIRATION]
 
-    def run(self):  # the running function
+
+
+
+
+    def run(self):
         while True:
             try:
                 clientSocket, addr = self.serverSocket.accept()
                 ip, _ = addr
-                
+                # Vulnerability 1 Dos/DDoS
                 if len(self.ip_request_times) > self.max_ips:
                     clientSocket.send(b"Too many IPs\n")
                     clientSocket.close()
                     continue
-                
+                # Vulnerability 1 Dos/DDoS
                 if self.is_rate_limited(ip):
                     clientSocket.send(b"Rate limited\n")
                     clientSocket.close()
                     continue
-                
+
                 msg = clientSocket.recv(1024).decode("utf-8").strip()
                 cmds = msg.split(' ')
                 if len(cmds) == 1:  # protected commands case
                     semi = msg.find(';')
                     if semi != -1:  # if we found the semicolon
-                        # print (msg)
-                        if msg[:semi] in self.tokens:  # if its a valid token
-                            self.processCommands(msg[semi + 1:], clientSocket)
-                        else:
-                            clientSocket.send(b"Bad Token\n")
+                        token = msg[:semi]
+                        self.process_protected_commands(msg[semi + 1:], clientSocket, token)
                     else:
                         clientSocket.send(b"Bad Command\n")
                 elif len(cmds) == 2:
-                    if cmds[0] in self.open_cmds:  # if its AUTH or LOGOUT
-                        self.processCommands(msg, clientSocket)
+                    if cmds[0] in self.open_cmds:
+                        self.processCommands(msg, clientSocket,ip)
                     else:
                         clientSocket.send(b"Authenticate First\n")
                 else:
-                    # otherwise bad command
                     clientSocket.send(b"Bad Command\n")
 
                 clientSocket.close()
 
-
-            except IOError as e :
-                if e.errno == errno.EWOULDBLOCK :
-                    #do nothing
+            except IOError as e:
+                if e.errno == errno.EWOULDBLOCK:
                     pass
-                else :
-                    #do nothing for now
+                else:
                     pass
                 msg = ""
 
             self.updateTemperature()
             time.sleep(self.updatePeriod)
-
-
 
 
 
