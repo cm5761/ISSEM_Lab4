@@ -52,10 +52,7 @@ class SmartNetworkThermometer (threading.Thread) :
         self.serverSocket.bind(("127.0.0.1", port))
         self.serverSocket.listen(5)  # Listen for incoming connections
 
-        
-
         self.deg = "K"
-        
         
         # # Vulnerability 1 Dos/DDoS Rate limiter attributes 
         self.max_requests_per_second = MAX_REQUESTS_PER_SECOND
@@ -141,8 +138,37 @@ class SmartNetworkThermometer (threading.Thread) :
             self.deg = "K"
 
     def updateTemperature(self) :
-        self.curTemperature = self.source.getTemperature()
+        newTemperature = self.source.getTemperature()
 
+        #Vulnerability #6 Temperature Control
+        min_inf_temp = 34+273 # Minimum temperature for infant (93.2°F)
+        max_inf_temp = 38+273 # Maximum temperature for infant (100.4°F)
+        min_inc_temp = 20+273 # Minimum temperature for incubator (68°F)
+        max_inc_temp = 39+273 # Maximum temperature for incubator (102.2°F)
+        
+        if self.deg == "F":
+            min_inf_temp = (min_inf_temp * 9 / 5) + 32
+            max_inf_temp = (max_inf_temp * 9 / 5) + 32	
+            min_inc_temp = (min_inc_temp * 9 / 5) + 32		
+            max_inc_temp = (max_inc_temp * 9 / 5) + 32
+        elif self.deg == "C":	
+            min_inf_temp = (min_inf_temp * 9 / 5) - 273
+            max_inf_temp = (max_inf_temp * 9 / 5) - 273	
+            min_inc_temp = (min_inc_temp * 9 / 5) - 273		
+            max_inc_temp = (max_inc_temp * 9 / 5) - 273		
+        
+        print("New temperature:", newTemperature - 273)
+		
+        #Vulnerability #6 Temperature Management
+        if self.serverSocket.bind()[1] == 23457 and (min_inc_temp > newTemperature or newTemperature > max_inc_temp): 
+            print(b"Invalid temperature value (outside of safe incubator range). Please restrict temperature settings to values between 20-39 C. \n")
+            print("Your requested value: ", newTemperature)
+        elif self.serverSocket.bind()[1] == 23456 and (min_inf_temp > newTemperature or newTemperature > max_inf_temp): 
+            print(b"Invalid temperature value (outside of safe infant range). Please restrict temperature settings to values between 34-38 C. \n")
+            print("Your requested value: ", newTemperature)
+        else:
+            self.curTemperature = self.source.getTemperature()
+		
     def getTemperature(self) :
         if self.deg == "C" :
             return self.curTemperature - 273
