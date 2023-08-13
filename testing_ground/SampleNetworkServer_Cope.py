@@ -41,19 +41,18 @@ class SmartNetworkThermometer (threading.Thread) :
         self.source = source
         self.updatePeriod = updatePeriod
         self.curTemperature = 0
-        self.updateTemperature()
+	self.deg = "K"    
         self.tokens = []
 
         # After creating the server socket we setup SSL/TLS
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.load_cert_chain(certfile='server-cert.pem', keyfile='server-key.pem')
-        # over TCP not UDP
+        
+	# over TCP not UDP
         self.serverSocket = context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         self.serverSocket.bind(("127.0.0.1", port))
         self.serverSocket.listen(5)  # Listen for incoming connections
 
-        self.deg = "K"
-        
         # # Vulnerability 1 Dos/DDoS Rate limiter attributes 
         self.max_requests_per_second = MAX_REQUESTS_PER_SECOND
         self.max_ips = MAX_IPS
@@ -62,7 +61,8 @@ class SmartNetworkThermometer (threading.Thread) :
         
         # Set up the Vault client
         self.vault_client = create_vault_client()
-        
+        self.updateTemperature()
+
     # Vulnerability 5 access controls
     def is_rate_limited(self, ip):
         if ip not in self.ip_request_times:
