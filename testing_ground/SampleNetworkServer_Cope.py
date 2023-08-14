@@ -41,7 +41,7 @@ class SmartNetworkThermometer (threading.Thread) :
         self.source = source
         self.updatePeriod = updatePeriod
         self.curTemperature = 0
-	self.deg = "K"    
+        self.deg = "K"    
         self.tokens = []
 
         # After creating the server socket we setup SSL/TLS
@@ -59,14 +59,14 @@ class SmartNetworkThermometer (threading.Thread) :
         self.ip_request_times = {}
         self.ip_locks = {}        
 
-        #Vulnerability #6 Temperature Control
-        min_inf_temp = 34+273 # Minimum temperature for infant (93.2°F)
-        max_inf_temp = 38+273 # Maximum temperature for infant (100.4°F)
-        min_inc_temp = 20+273 # Minimum temperature for incubator (68°F)
-        max_inc_temp = 39+273 # Maximum temperature for incubator (102.2°F)
-
         # Set up the Vault client
         self.vault_client = create_vault_client()
+
+        #Vulnerability #6 Temperature Control
+        self.min_inf_temp = 34+273 # Minimum temperature for infant (93.2°F)
+        self.max_inf_temp = 38+273 # Maximum temperature for infant (100.4°F)
+        self.min_inc_temp = 20+273 # Minimum temperature for incubator (68°F)
+        self.max_inc_temp = 39+273 # Maximum temperature for incubator (102.2°F)
         self.updateTemperature()
 
     # Vulnerability 5 access controls
@@ -147,25 +147,24 @@ class SmartNetworkThermometer (threading.Thread) :
         newTemperature = self.source.getTemperature()
         
         if self.deg == "F":
-            min_inf_temp = ((min_inf_temp - 273) * 9 / 5) + 32
-            max_inf_temp = ((max_inf_temp - 273) * 9 / 5) + 32	
-            min_inc_temp = (min_inc_temp - 273)  * 9 / 5) + 32		
-            max_inc_temp = (max_inc_temp - 273)  * 9 / 5) + 32
+            self.min_inf_temp = (min_inf_temp - 273) * (9 / 5) + 32
+            self.max_inf_temp = (max_inf_temp - 273) * (9 / 5) + 32	
+            self.min_inc_temp = (min_inc_temp - 273)  * (9 / 5) + 32		
+            self.max_inc_temp = (max_inc_temp - 273)  * (9 / 5) + 32
         elif self.deg == "C":	
-            min_inf_temp = min_inf_temp - 273
-            max_inf_temp = max_inf_temp - 273	
-            min_inc_temp = min_inc_temp - 273		
-            max_inc_temp = max_inc_temp - 273		
+            self.min_inf_temp = min_inf_temp - 273
+            self.max_inf_temp = max_inf_temp - 273	
+            self.min_inc_temp = min_inc_temp - 273		
+            self.max_inc_temp = max_inc_temp - 273		
         
-        print("New temperature:", newTemperature - 273)
 		
         #Vulnerability #6 Temperature Management
-        if self.serverSocket.getsockname()[1] == 23457 and (min_inc_temp > newTemperature or newTemperature > max_inc_temp): 
+        if self.serverSocket.getsockname()[1] == 23457 and (self.min_inc_temp > newTemperature or newTemperature > self.max_inc_temp): 
             print(b"Invalid temperature value (outside of safe incubator range). Please restrict temperature settings to values between 20-39 C. \n")
-            print("Your requested value: ", newTemperature)
-        elif self.serverSocket.getsockname()[1] == 23456 and (min_inf_temp > newTemperature or newTemperature > max_inf_temp): 
+            print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C)")
+        elif self.serverSocket.getsockname()[1] == 23456 and (self.min_inf_temp > newTemperature or newTemperature > self.max_inf_temp): 
             print(b"Invalid temperature value (outside of safe infant range). Please restrict temperature settings to values between 34-38 C. \n")
-            print("Your requested value: ", newTemperature)
+            print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C)")
         else:
             self.curTemperature = self.source.getTemperature()
 		
