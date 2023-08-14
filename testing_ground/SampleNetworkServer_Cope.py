@@ -160,11 +160,11 @@ class SmartNetworkThermometer (threading.Thread) :
 		
         #Vulnerability #6 Temperature Management
         if self.serverSocket.getsockname()[1] == 23457 and (self.min_inc_temp > newTemperature or newTemperature > self.max_inc_temp): 
-            print(b"Invalid temperature value (outside of safe incubator range). Please restrict temperature settings to values between", self.min_inc_temp-273, "-", self.max_inc_temp-273,"C. \n")
-            print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C)")
+            print(b"Invalid temperature value (outside of safe incubator range). Please restrict temperature settings to values between", self.min_inc_temp-273, "-", self.max_inc_temp-273,"C.")
+            print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C) \n")
         elif self.serverSocket.getsockname()[1] == 23456 and (self.min_inf_temp > newTemperature or newTemperature > self.max_inf_temp): 
-            print(b"Invalid temperature value (outside of safe infant range). Please restrict temperature settings to values between", self.min_inc_temp-273, "-", self.max_inc_temp-273,"C. \n")
-            print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C)")
+            print(b"Invalid temperature value (outside of safe infant range). Please restrict temperature settings to values between", self.min_inc_temp-273, "-", self.max_inc_temp-273,"C.")
+            print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C) \n")
         else:
             self.curTemperature = self.source.getTemperature()
 		
