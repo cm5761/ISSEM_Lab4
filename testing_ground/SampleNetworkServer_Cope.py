@@ -66,7 +66,7 @@ class SmartNetworkThermometer (threading.Thread) :
         self.min_inf_temp = 34+273 # Minimum temperature for infant (93.2°F)
         self.max_inf_temp = 38+273 # Maximum temperature for infant (100.4°F)
         self.min_inc_temp = 20+273 # Minimum temperature for incubator (68°F)
-        self.max_inc_temp = 39+273 # Maximum temperature for incubator (102.2°F)
+        self.max_inc_temp = 47+273 # Maximum temperature for incubator (116.6°F)
         self.updateTemperature()
 
     # Vulnerability 5 access controls
@@ -160,10 +160,10 @@ class SmartNetworkThermometer (threading.Thread) :
 		
         #Vulnerability #6 Temperature Management
         if self.serverSocket.getsockname()[1] == 23457 and (self.min_inc_temp > newTemperature or newTemperature > self.max_inc_temp): 
-            print(b"Invalid temperature value (outside of safe incubator range). Please restrict temperature settings to values between 20-39 C. \n")
+            print(b"Invalid temperature value (outside of safe incubator range). Please restrict temperature settings to values between", self.min_inc_temp-273, "-", self.max_inc_temp-273,"C. \n")
             print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C)")
         elif self.serverSocket.getsockname()[1] == 23456 and (self.min_inf_temp > newTemperature or newTemperature > self.max_inf_temp): 
-            print(b"Invalid temperature value (outside of safe infant range). Please restrict temperature settings to values between 34-38 C. \n")
+            print(b"Invalid temperature value (outside of safe infant range). Please restrict temperature settings to values between", self.min_inc_temp-273, "-", self.max_inc_temp-273,"C. \n")
             print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C)")
         else:
             self.curTemperature = self.source.getTemperature()
@@ -316,7 +316,7 @@ UPDATE_PERIOD = .05 #in seconds
 SIMULATION_STEP = .1 #in seconds
 
 #create a new instance of IncubatorSimulator
-bob = infinc.Human(mass = 8, length = 1.68, temperature = 36 + 273)
+bob = infinc.Human(mass = 8, length = 1.68, temperature = 33.5 + 273)
 #bobThermo = infinc.SmartThermometer(bob, UPDATE_PERIOD)
 bobThermo = SmartNetworkThermometer(bob, UPDATE_PERIOD, 23456)
 bobThermo.start() #start the thread
