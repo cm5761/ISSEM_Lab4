@@ -41,31 +41,34 @@ class SmartNetworkThermometer (threading.Thread) :
         self.source = source
         self.updatePeriod = updatePeriod
         self.curTemperature = 0
-        self.updateTemperature()
+        self.deg = "K"    
         self.tokens = []
 
         # After creating the server socket we setup SSL/TLS
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.load_cert_chain(certfile='server-cert.pem', keyfile='server-key.pem')
-        # over TCP not UDP
+        
+	# over TCP not UDP
         self.serverSocket = context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         self.serverSocket.bind(("127.0.0.1", port))
         self.serverSocket.listen(5)  # Listen for incoming connections
 
-        
-
-        self.deg = "K"
-        
-        
         # # Vulnerability 1 Dos/DDoS Rate limiter attributes 
         self.max_requests_per_second = MAX_REQUESTS_PER_SECOND
         self.max_ips = MAX_IPS
         self.ip_request_times = {}
         self.ip_locks = {}        
-        
+
         # Set up the Vault client
         self.vault_client = create_vault_client()
-        
+
+        #Vulnerability #6 Temperature Control
+        self.min_inf_temp = 34+273 # Minimum temperature for infant (93.2°F)
+        self.max_inf_temp = 38+273 # Maximum temperature for infant (100.4°F)
+        self.min_inc_temp = 20+273 # Minimum temperature for incubator (68°F)
+        self.max_inc_temp = 47+273 # Maximum temperature for incubator (116.6°F)
+        self.updateTemperature()
+
     # Vulnerability 5 access controls
     def is_rate_limited(self, ip):
         if ip not in self.ip_request_times:
@@ -141,8 +144,30 @@ class SmartNetworkThermometer (threading.Thread) :
             self.deg = "K"
 
     def updateTemperature(self) :
-        self.curTemperature = self.source.getTemperature()
-
+        newTemperature = self.source.getTemperature()
+        
+        if self.deg == "F":
+            self.min_inf_temp = (min_inf_temp - 273) * (9 / 5) + 32
+            self.max_inf_temp = (max_inf_temp - 273) * (9 / 5) + 32	
+            self.min_inc_temp = (min_inc_temp - 273)  * (9 / 5) + 32		
+            self.max_inc_temp = (max_inc_temp - 273)  * (9 / 5) + 32
+        elif self.deg == "C":	
+            self.min_inf_temp = min_inf_temp - 273
+            self.max_inf_temp = max_inf_temp - 273	
+            self.min_inc_temp = min_inc_temp - 273		
+            self.max_inc_temp = max_inc_temp - 273		
+        
+		
+        #Vulnerability #6 Temperature Management
+        if self.serverSocket.getsockname()[1] == 23457 and (self.min_inc_temp > newTemperature or newTemperature > self.max_inc_temp): 
+            print(b"Invalid temperature value (outside of safe incubator range). Please restrict temperature settings to values between", self.min_inc_temp-273, "-", self.max_inc_temp-273,"C.")
+            print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C) \n")
+        elif self.serverSocket.getsockname()[1] == 23456 and (self.min_inf_temp > newTemperature or newTemperature > self.max_inf_temp): 
+            print(b"Invalid temperature value (outside of safe infant range). Please restrict temperature settings to values between", self.min_inc_temp-273, "-", self.max_inc_temp-273,"C.")
+            print("Your requested value: ", self.source.getTemperature(), "K (", (self.source.getTemperature()-273), "C) \n")
+        else:
+            self.curTemperature = self.source.getTemperature()
+		
     def getTemperature(self) :
         if self.deg == "C" :
             return self.curTemperature - 273
@@ -291,7 +316,7 @@ UPDATE_PERIOD = .05 #in seconds
 SIMULATION_STEP = .1 #in seconds
 
 #create a new instance of IncubatorSimulator
-bob = infinc.Human(mass = 8, length = 1.68, temperature = 36 + 273)
+bob = infinc.Human(mass = 8, length = 1.68, temperature = 33.5 + 273)
 #bobThermo = infinc.SmartThermometer(bob, UPDATE_PERIOD)
 bobThermo = SmartNetworkThermometer(bob, UPDATE_PERIOD, 23456)
 bobThermo.start() #start the thread
@@ -313,4 +338,3 @@ sc = SimpleClient(bobThermo, incThermo)
 
 plt.grid()
 plt.show()
-
